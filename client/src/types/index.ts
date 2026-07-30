@@ -58,3 +58,20 @@ export type LayoutOption = {
   label: string;
   description: string;
 };
+
+export type LocationCityOption = {
+  id: string;
+  label: string;
+  description: string;
+};
+
+export type LocationCountryOption = {
+  id: string;
+  label: string;
+  cities: LocationCityOption[];
+};
+
+export type SearchKeywordOption = {
+  id: string;
+  label: string;
+};

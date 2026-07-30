@@ -2,7 +2,7 @@
 
 import { AppHeader } from '@/components/common/AppHeader';
 import { ConsumerMarket } from '@/components/consumer/ConsumerMarket';
-import { layouts, regions } from '@/features/guidebook/constants';
+import { layouts, searchKeywords } from '@/features/guidebook/constants';
 import { useGuidebookCatalog } from '@/features/guidebook/hooks/useGuidebookCatalog';
 
 export default function ConsumerPage() {
@@ -17,20 +17,19 @@ export default function ConsumerPage() {
       ) : (
         <ConsumerMarket
           blocks={catalog.blocks}
+          creators={catalog.creators}
           guidebooks={catalog.guidebooks}
           layouts={layouts}
           message={catalog.message}
-          orders={catalog.orders}
-          regions={regions}
+          searchQuery={catalog.searchQuery}
+          searchKeywords={searchKeywords}
           selectedGuidebook={catalog.selectedGuidebook}
+          selectedKeyword={catalog.selectedKeyword}
           selectedLayout={catalog.selectedLayout}
-          selectedRegion={catalog.selectedRegion}
-          topGuidebook={catalog.topGuidebook}
           onCreateOrder={catalog.createPrintOrder}
           onGuidebookSelect={catalog.setSelectedGuidebook}
           onLayoutChange={catalog.setSelectedLayout}
-          onRegionChange={catalog.setSelectedRegion}
-          onStatusChange={catalog.updateOrderStatus}
+          onSearchSubmit={catalog.submitSearch}
         />
       )}
     </main>

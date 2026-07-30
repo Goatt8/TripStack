@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 
-import { layouts } from '@/features/guidebook/constants';
+import { guidebookKeywordMap, layouts } from '@/features/guidebook/constants';
 import { guidebookService } from '@/services/guidebookService';
 import type { Guidebook, GuidebookBlock, Order, OrderStatus, User } from '@/types';
 
@@ -10,7 +10,8 @@ export function useGuidebookCatalog() {
   const [creators, setCreators] = useState<User[]>([]);
   const [guidebooks, setGuidebooks] = useState<Guidebook[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
-  const [selectedRegion, setSelectedRegion] = useState('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedKeyword, setSelectedKeyword] = useState('all');
   const [selectedGuidebook, setSelectedGuidebook] = useState<Guidebook | null>(null);
   const [blocks, setBlocks] = useState<GuidebookBlock[]>([]);
   const [selectedLayout, setSelectedLayout] = useState(layouts[0].id);
@@ -43,7 +44,7 @@ export function useGuidebookCatalog() {
     async function loadGuidebooks() {
       try {
         setError('');
-        const data = await guidebookService.getGuidebooks(selectedRegion);
+        const data = await guidebookService.getGuidebooks();
         setGuidebooks(data);
         setSelectedGuidebook((previous) => {
           if (previous && data.some((item) => item.id === previous.id)) {
@@ -58,7 +59,7 @@ export function useGuidebookCatalog() {
     }
 
     void loadGuidebooks();
-  }, [selectedRegion]);
+  }, []);
 
   useEffect(() => {
     if (!selectedGuidebook) {
@@ -79,11 +80,42 @@ export function useGuidebookCatalog() {
     void loadBlocks();
   }, [selectedGuidebook]);
 
-  const topGuidebook = guidebooks[0];
+  const filteredGuidebooks = useMemo(() => {
+    const keyword = searchQuery.trim().toLowerCase();
+
+    return guidebooks.filter((guidebook) => {
+      const searchableText = [
+        guidebook.title,
+        guidebook.region,
+        guidebook.creatorName,
+      ].join(' ').toLowerCase();
+      const matchesText = !keyword || searchableText.includes(keyword);
+      const matchesKeyword = selectedKeyword === 'all' || guidebookKeywordMap[guidebook.region]?.includes(selectedKeyword);
+
+      return matchesText && matchesKeyword;
+    });
+  }, [guidebooks, searchQuery, selectedKeyword]);
+
+  useEffect(() => {
+    setSelectedGuidebook((previous) => {
+      if (previous && filteredGuidebooks.some((item) => item.id === previous.id)) {
+        return previous;
+      }
+
+      return filteredGuidebooks[0] ?? null;
+    });
+  }, [filteredGuidebooks]);
+
+  const topGuidebook = filteredGuidebooks[0];
   const totalPrintCount = useMemo(
     () => guidebooks.reduce((sum, guidebook) => sum + guidebook.printCount, 0),
     [guidebooks],
   );
+
+  function submitSearch(query: string, keyword: string) {
+    setSearchQuery(query);
+    setSelectedKeyword(keyword);
+  }
 
   async function createPrintOrder() {
     if (!selectedGuidebook) {
@@ -111,16 +143,19 @@ export function useGuidebookCatalog() {
     createPrintOrder,
     creators,
     error,
-    guidebooks,
+    guidebooks: filteredGuidebooks,
     loading,
     message,
     orders,
+    searchQuery,
     selectedGuidebook,
     selectedLayout,
-    selectedRegion,
+    selectedKeyword,
+    setSearchQuery,
     setSelectedGuidebook,
+    submitSearch,
+    setSelectedKeyword,
     setSelectedLayout,
-    setSelectedRegion,
     topGuidebook,
     totalPrintCount,
     updateOrderStatus,

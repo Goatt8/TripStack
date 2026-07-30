@@ -1,61 +1,55 @@
-import { MetricCard } from '@/components/common/MetricCard';
+import { CreatorRail } from '@/components/consumer/CreatorRail';
+import { GuidebookCategorySections } from '@/components/consumer/GuidebookCategorySections';
 import { GuidebookPreview } from '@/components/consumer/GuidebookPreview';
-import { GuidebookRankList } from '@/components/consumer/GuidebookRankList';
-import { OrderStatusList } from '@/components/consumer/OrderStatusList';
-import { RegionTabs } from '@/components/consumer/RegionTabs';
-import type { Guidebook, GuidebookBlock, LayoutOption, Order, OrderStatus, RegionOption } from '@/types';
+import { GuidebookSearchBar } from '@/components/consumer/GuidebookSearchBar';
+import type { Guidebook, GuidebookBlock, LayoutOption, SearchKeywordOption, User } from '@/types';
 
 type ConsumerMarketProps = {
   blocks: GuidebookBlock[];
+  creators: User[];
   guidebooks: Guidebook[];
   layouts: LayoutOption[];
   message: string;
-  orders: Order[];
-  regions: RegionOption[];
+  searchKeywords: SearchKeywordOption[];
+  searchQuery: string;
   selectedGuidebook: Guidebook | null;
+  selectedKeyword: string;
   selectedLayout: string;
-  selectedRegion: string;
-  topGuidebook?: Guidebook;
   onCreateOrder: () => void;
   onGuidebookSelect: (guidebook: Guidebook) => void;
   onLayoutChange: (layout: string) => void;
-  onRegionChange: (region: string) => void;
-  onStatusChange: (order: Order, status: OrderStatus) => void;
+  onSearchSubmit: (query: string, keyword: string) => void;
 };
 
 export function ConsumerMarket(props: ConsumerMarketProps) {
   return (
     <>
-      <section className="summary-grid">
-        <MetricCard label="가이드북" value={props.guidebooks.length.toString()} />
-        <MetricCard label="최고 랭킹" value={props.topGuidebook ? `#${props.topGuidebook.rankInRegion}` : '-'} />
-        <MetricCard label="주문" value={props.orders.length.toString()} />
-      </section>
-
-      <RegionTabs
-        regions={props.regions}
-        selectedRegion={props.selectedRegion}
-        onRegionChange={props.onRegionChange}
+      <GuidebookSearchBar
+        guidebooks={props.guidebooks}
+        searchKeywords={props.searchKeywords}
+        searchQuery={props.searchQuery}
+        selectedKeyword={props.selectedKeyword}
+        onSearchSubmit={props.onSearchSubmit}
       />
 
-      <section className="market-grid">
-        <GuidebookRankList
-          guidebooks={props.guidebooks}
-          selectedGuidebook={props.selectedGuidebook}
-          onGuidebookSelect={props.onGuidebookSelect}
-        />
-        <GuidebookPreview
-          blocks={props.blocks}
-          layouts={props.layouts}
-          message={props.message}
-          selectedGuidebook={props.selectedGuidebook}
-          selectedLayout={props.selectedLayout}
-          onCreateOrder={props.onCreateOrder}
-          onLayoutChange={props.onLayoutChange}
-        />
-      </section>
+      <CreatorRail creators={props.creators} />
 
-      <OrderStatusList orders={props.orders} onStatusChange={props.onStatusChange} />
+      <GuidebookCategorySections
+        guidebooks={props.guidebooks}
+        keywords={props.searchKeywords}
+        selectedGuidebook={props.selectedGuidebook}
+        onGuidebookSelect={props.onGuidebookSelect}
+      />
+
+      <GuidebookPreview
+        blocks={props.blocks}
+        layouts={props.layouts}
+        message={props.message}
+        selectedGuidebook={props.selectedGuidebook}
+        selectedLayout={props.selectedLayout}
+        onCreateOrder={props.onCreateOrder}
+        onLayoutChange={props.onLayoutChange}
+      />
     </>
   );
 }

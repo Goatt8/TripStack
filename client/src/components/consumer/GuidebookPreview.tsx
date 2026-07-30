@@ -20,23 +20,31 @@ export function GuidebookPreview({
   onLayoutChange,
 }: GuidebookPreviewProps) {
   return (
-    <div className="section-card guide-preview">
+    <section className="section-card thumbnail-preview-section">
       {selectedGuidebook ? (
         <>
-          <div className="section-heading">
-            <h2>{selectedGuidebook.title}</h2>
-            <p>{selectedGuidebook.printCount.toLocaleString()}회 인쇄된 지역 가이드북</p>
+          <div className="thumbnail-preview-main">
+            <img src={selectedGuidebook.coverImageUrl} alt={`${selectedGuidebook.title} cover`} />
+            <div>
+              <span className="rank-badge">#{selectedGuidebook.rankInRegion} {selectedGuidebook.region}</span>
+              <h2>{selectedGuidebook.title}</h2>
+              <p>{selectedGuidebook.creatorName} · {selectedGuidebook.printCount.toLocaleString()}회 인쇄 · 신뢰도 {selectedGuidebook.trustScore}</p>
+            </div>
           </div>
-          <div className="block-list">
+
+          <div className="thumbnail-block-list">
             {blocks.map((block) => (
-              <article className="content-block" key={block.id}>
-                <span>Page {block.stepOrder}</span>
-                <h3>{block.placeName}</h3>
-                <p>{block.content}</p>
+              <article className="thumbnail-info-row" key={block.id}>
+                <img src={selectedGuidebook.coverImageUrl} alt="guidebook block" />
+                <div>
+                  <strong>{block.placeName}</strong>
+                  <p>Page {block.stepOrder} · {block.content}</p>
+                </div>
               </article>
             ))}
           </div>
-          <div className="layout-list">
+
+          <div className="layout-list compact-layout-list">
             {layouts.map((layout) => (
               <button
                 className={selectedLayout === layout.id ? 'layout-card selected' : 'layout-card'}
@@ -53,6 +61,6 @@ export function GuidebookPreview({
       ) : (
         <p className="empty-state">선택 가능한 가이드북이 없습니다.</p>
       )}
-    </div>
+    </section>
   );
 }
