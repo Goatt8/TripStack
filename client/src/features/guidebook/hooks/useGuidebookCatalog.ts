@@ -15,7 +15,6 @@ export function useGuidebookCatalog() {
   const [selectedGuidebook, setSelectedGuidebook] = useState<Guidebook | null>(null);
   const [blocks, setBlocks] = useState<GuidebookBlock[]>([]);
   const [selectedLayout, setSelectedLayout] = useState(layouts[0].id);
-  const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -117,22 +116,6 @@ export function useGuidebookCatalog() {
     setSelectedKeyword(keyword);
   }
 
-  async function createPrintOrder() {
-    if (!selectedGuidebook) {
-      return;
-    }
-
-    const order = await guidebookService.createOrder({
-      consumerId: 4,
-      guidebookId: selectedGuidebook.id,
-      selectedLayoutType: selectedLayout,
-      shippingMemo: '샘플 주문: 여행 전 휴대하기 좋은 미니 가이드북으로 제작 요청',
-    });
-
-    setOrders((previous) => [order, ...previous]);
-    setMessage(`${selectedGuidebook.title} 주문이 접수되었습니다.`);
-  }
-
   async function updateOrderStatus(order: Order, status: OrderStatus) {
     const updated = await guidebookService.updateOrderStatus(order.id, status);
     setOrders((previous) => previous.map((item) => (item.id === updated.id ? updated : item)));
@@ -140,12 +123,10 @@ export function useGuidebookCatalog() {
 
   return {
     blocks,
-    createPrintOrder,
     creators,
     error,
     guidebooks: filteredGuidebooks,
     loading,
-    message,
     orders,
     searchQuery,
     selectedGuidebook,

@@ -28,6 +28,15 @@ const countryLabels: Record<string, string> = {
   bangkok: '태국',
 };
 
+function SearchIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24">
+      <circle cx="10.5" cy="10.5" r="5.75" />
+      <path d="m15 15 5 5" />
+    </svg>
+  );
+}
+
 export function GuidebookSearchBar({
   guidebooks,
   searchKeywords,
@@ -110,9 +119,7 @@ export function GuidebookSearchBar({
   return (
     <section className="search-hero compact-search-hero">
       <div className="search-copy centered-copy">
-        <p className="eyebrow">Guidebook Market</p>
-        <h2>어떤 여행을 찾고 있나요?</h2>
-        <p>도시와 국가를 검색하거나 카테고리를 선택해 인쇄할 여행 가이드북을 찾아보세요.</p>
+        <p>여행지와 카테고리를 선택해주세요.</p>
       </div>
 
       <div className="trip-search-shell" ref={searchShellRef}>
@@ -138,7 +145,7 @@ export function GuidebookSearchBar({
           </button>
 
           <button className="trip-search-button" type="button" onClick={submitSearch}>
-            <span>⌕</span>
+            <SearchIcon />
             검색
           </button>
         </div>

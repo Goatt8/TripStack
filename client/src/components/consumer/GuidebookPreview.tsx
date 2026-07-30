@@ -3,20 +3,16 @@ import type { Guidebook, GuidebookBlock, LayoutOption } from '@/types';
 type GuidebookPreviewProps = {
   blocks: GuidebookBlock[];
   layouts: LayoutOption[];
-  message: string;
   selectedGuidebook: Guidebook | null;
   selectedLayout: string;
-  onCreateOrder: () => void;
   onLayoutChange: (layout: string) => void;
 };
 
 export function GuidebookPreview({
   blocks,
   layouts,
-  message,
   selectedGuidebook,
   selectedLayout,
-  onCreateOrder,
   onLayoutChange,
 }: GuidebookPreviewProps) {
   return (
@@ -55,8 +51,6 @@ export function GuidebookPreview({
               </button>
             ))}
           </div>
-          <button className="primary-button" onClick={onCreateOrder}>이 가이드북 인쇄 주문</button>
-          {message && <p className="success-message">{message}</p>}
         </>
       ) : (
         <p className="empty-state">선택 가능한 가이드북이 없습니다.</p>

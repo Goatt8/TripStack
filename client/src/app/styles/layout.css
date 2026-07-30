@@ -1,10 +1,5 @@
-.entry-shell,
 .app-shell {
-  width: min(1120px, calc(100% - 40px));
-  margin: 0 auto;
-}
-
-.app-shell {
+  width: 100%;
   padding: 28px 0 60px;
 }
 
@@ -17,7 +12,20 @@
 }
 
 .topbar {
+  width: min(1120px, calc(100% - 40px));
+  margin-right: auto;
   margin-bottom: 22px;
+  margin-left: auto;
+}
+
+.logo-topbar {
+  margin-bottom: 10px;
+}
+
+.logo-topbar .eyebrow {
+  margin-bottom: 0;
+  font-size: 22px;
+  text-transform: none;
 }
 
 .topbar h1 {

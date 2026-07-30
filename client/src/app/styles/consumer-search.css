@@ -1,7 +1,7 @@
 .search-hero {
   display: grid;
-  gap: 18px;
-  margin-bottom: 18px;
+  gap: 8px;
+  margin-bottom: 22px;
   border: 1px solid #dfe4ec;
   border-radius: 8px;
   background: #ffffff;
@@ -13,7 +13,7 @@
   overflow: visible;
   border: 0;
   background: transparent;
-  padding: 12px 0 18px;
+  padding: 0 0 8px;
 }
 
 .search-copy {
@@ -38,17 +38,17 @@
 }
 
 .search-copy p {
-  margin: 10px 0 0;
+  margin: 0 0 12px;
   color: #667085;
-  font-size: 16px;
+  font-size: 13px;
   font-weight: 700;
-  line-height: 1.6;
+  line-height: 1.4;
 }
 
 .trip-search-shell {
   position: relative;
   z-index: 5;
-  width: min(920px, 100%);
+  width: min(560px, 100%);
   margin: 0 auto;
 }
 
@@ -68,12 +68,12 @@
 }
 
 .trip-search-segment {
-  min-height: 76px;
+  min-height: 48px;
   text-align: left;
   border: 0;
   border-radius: 999px;
   background: transparent;
-  padding: 14px 28px;
+  padding: 9px 18px;
 }
 
 .trip-search-segment + .trip-search-segment {
@@ -87,13 +87,13 @@
 }
 
 .trip-search-segment input {
-  width: calc(100% - 28px);
-  margin-top: 5px;
+  width: calc(100% - 20px);
+  margin-top: 0;
   border: 0;
   outline: 0;
   background: transparent;
   color: #101828;
-  font-size: 18px;
+  font-size: 14px;
   font-weight: 800;
 }
 
@@ -112,7 +112,7 @@
 
 .trip-search-segment b {
   float: right;
-  margin-top: -26px;
+  margin-top: -20px;
   color: #344054;
   font-size: 25px;
   line-height: 1;
@@ -126,7 +126,7 @@
 
 .keyword-placeholder-segment strong {
   color: #667085;
-  font-size: 18px;
+  font-size: 14px;
   font-weight: 900;
 }
 
@@ -139,20 +139,25 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
-  min-width: 132px;
-  min-height: 58px;
-  margin-right: 10px;
+  min-width: 82px;
+  min-height: 38px;
+  margin-right: 6px;
   border: 0;
   border-radius: 999px;
   background: #e91e63;
   color: #ffffff;
-  font-size: 18px;
+  font-size: 14px;
   font-weight: 900;
 }
 
-.trip-search-button span {
-  font-size: 28px;
-  line-height: 1;
+.trip-search-button svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2.3;
 }
 
 .search-popover {

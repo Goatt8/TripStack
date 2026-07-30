@@ -1,17 +1,18 @@
 import Link from 'next/link';
 
 type AppHeaderProps = {
+  compact?: boolean;
   title: string;
 };
 
-export function AppHeader({ title }: AppHeaderProps) {
+export function AppHeader({ compact = false, title }: AppHeaderProps) {
   return (
-    <header className="topbar">
+    <header className={compact ? 'topbar logo-topbar' : 'topbar'}>
       <div>
         <p className="eyebrow">TripStack</p>
-        <h1>{title}</h1>
+        {!compact && <h1>{title}</h1>}
       </div>
-      <Link className="dark-button" href="/">역할 변경</Link>
+      {!compact && <Link className="dark-button" href="/">홈</Link>}
     </header>
   );
 }

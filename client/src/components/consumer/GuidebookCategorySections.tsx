@@ -16,6 +16,14 @@ const regionLabels: Record<string, string> = {
   bangkok: '방콕',
 };
 
+const countryLabels: Record<string, string> = {
+  seoul: '대한민국',
+  gyeongju: '대한민국',
+  jeju: '대한민국',
+  roma: '이탈리아',
+  bangkok: '태국',
+};
+
 export function GuidebookCategorySections({
   guidebooks,
   keywords,
@@ -47,23 +55,27 @@ export function GuidebookCategorySections({
           </div>
 
           <div className="category-guide-rail">
-            {section.guidebooks.map((guidebook) => (
-              <button
-                className={selectedGuidebook?.id === guidebook.id ? 'category-guide-card active' : 'category-guide-card'}
-                key={`${section.keyword.id}-${guidebook.id}`}
-                type="button"
-                onClick={() => onGuidebookSelect(guidebook)}>
-                <img src={guidebook.coverImageUrl} alt={`${guidebook.title} thumbnail`} />
-                <div>
-                  <strong>{guidebook.title}</strong>
-                  <p>
-                    {guidebook.creatorName} · {regionLabels[guidebook.region] ?? guidebook.region} ·{' '}
-                    {guidebook.printCount.toLocaleString()}회 인쇄
-                  </p>
+            {section.guidebooks.map((guidebook) => {
+              const region = regionLabels[guidebook.region] ?? guidebook.region;
+              const country = countryLabels[guidebook.region] ?? guidebook.region;
+
+              return (
+                <article
+                  className={selectedGuidebook?.id === guidebook.id ? 'category-guide-card active' : 'category-guide-card'}
+                  key={`${section.keyword.id}-${guidebook.id}`}>
+                  <button className="category-guide-select" type="button" onClick={() => onGuidebookSelect(guidebook)}>
+                    <img src={guidebook.coverImageUrl} alt={`${guidebook.title} thumbnail`} />
+                    <div className="category-guide-overlay">
+                      <div className="category-guide-meta">
+                        <span>{region}.{country}</span>
+                        <strong>♡ {guidebook.printCount.toLocaleString()}</strong>
+                      </div>
+                    </div>
+                  </button>
+                </article>
+              );
+            })}
                 </div>
-              </button>
-            ))}
-          </div>
         </section>
       ))}
     </div>
