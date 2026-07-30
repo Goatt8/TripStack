@@ -1,0 +1,14 @@
+node_modules/
+dist/
+.next/
+.env
+.env.local
+*.log
+.DS_Store
+
+# SQLite runtime files
+data/*.db
+data/*.db-*
+
+# Docker/local caches
+.docker/
