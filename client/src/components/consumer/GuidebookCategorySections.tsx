@@ -175,7 +175,6 @@ export function GuidebookCategorySections({
               <h2>{section.keyword.label} 여행 가이드</h2>
               <p>선택한 조건에 맞는 인기 가이드북을 둘러보세요.</p>
             </div>
-            <span>더보기</span>
           </div>
 
           <ScrollableGuidebookRail>

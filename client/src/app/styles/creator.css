@@ -3,6 +3,28 @@
   margin-bottom: 28px;
 }
 
+.creator-top-tabs .consumer-feed-tab {
+  position: relative;
+}
+
+.tab-count-badge {
+  position: absolute;
+  top: 3px;
+  right: 2px;
+  display: grid;
+  place-items: center;
+  min-width: 15px;
+  height: 15px;
+  border: 1px solid #ffffff;
+  border-radius: 999px;
+  background: #2563eb;
+  color: #ffffff;
+  padding: 0 4px;
+  font-size: 9px;
+  font-weight: 900;
+  line-height: 1;
+}
+
 .creator-studio-content {
   width: min(760px, calc(100% - 160px));
   margin: 0 auto;

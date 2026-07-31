@@ -7,6 +7,12 @@ import { CreatorRail } from '@/components/consumer/CreatorRail';
 import { GuidebookCategorySections } from '@/components/consumer/GuidebookCategorySections';
 import { GuidebookSearchBar } from '@/components/consumer/GuidebookSearchBar';
 import { GuidebookPrintDetailModal } from '@/components/guidebook/GuidebookPrintDetailModal';
+import { currentAccount } from '@/features/account/currentAccount';
+import {
+  INTERESTED_CREATOR_EVENT_NAME,
+  addInterestedCreatorId,
+  readInterestedCreatorIds,
+} from '@/features/interest/creatorInterest';
 import type { Guidebook, GuidebookBlock, SearchKeywordOption, User } from '@/types';
 
 type ConsumerGuidebookFeedProps = {
@@ -61,7 +67,10 @@ export function ConsumerGuidebookFeed(props: ConsumerGuidebookFeedProps) {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [isPrintDetailOpen, setIsPrintDetailOpen] = useState(false);
+  const [interestedCreatorIds, setInterestedCreatorIds] = useState<number[]>([]);
   const selectedCreator = props.creators.find((creator) => creator.id === props.selectedGuidebook?.creatorId);
+  const isSelectedCreatorInterested = selectedCreator ? interestedCreatorIds.includes(selectedCreator.id) : false;
+  const isSelectedCreatorCurrentAccount = selectedCreator?.id === currentAccount.creatorId;
 
   useEffect(() => {
     function closeOnEscape(event: KeyboardEvent) {
@@ -79,10 +88,33 @@ export function ConsumerGuidebookFeed(props: ConsumerGuidebookFeedProps) {
     return () => document.removeEventListener('keydown', closeOnEscape);
   }, [isPrintDetailOpen]);
 
+  useEffect(() => {
+    setInterestedCreatorIds(readInterestedCreatorIds());
+
+    function syncInterestedCreators(event: Event) {
+      setInterestedCreatorIds((event as CustomEvent<number[]>).detail ?? readInterestedCreatorIds());
+    }
+
+    window.addEventListener(INTERESTED_CREATOR_EVENT_NAME, syncInterestedCreators);
+    return () => window.removeEventListener(INTERESTED_CREATOR_EVENT_NAME, syncInterestedCreators);
+  }, []);
+
   function openGuidebookDetail(guidebook: Guidebook) {
     props.onGuidebookSelect(guidebook);
     setIsDetailOpen(true);
     setIsPrintDetailOpen(false);
+  }
+
+  function addSelectedCreatorToInterest() {
+    if (!selectedCreator) {
+      return;
+    }
+
+    if (selectedCreator.id === currentAccount.creatorId) {
+      return;
+    }
+
+    setInterestedCreatorIds(addInterestedCreatorId(selectedCreator.id));
   }
 
   return (
@@ -161,7 +193,16 @@ export function ConsumerGuidebookFeed(props: ConsumerGuidebookFeedProps) {
                 </div>
               </div>
               <div className="guidebook-detail-actions">
-                <button type="button">관심</button>
+                {isSelectedCreatorCurrentAccount ? (
+                  <Link href="/creator">내 화면</Link>
+                ) : (
+                  <button
+                    className={isSelectedCreatorInterested ? 'interested' : ''}
+                    type="button"
+                    onClick={addSelectedCreatorToInterest}>
+                    {isSelectedCreatorInterested ? '관심중' : '관심'}
+                  </button>
+                )}
                 <button type="button" onClick={() => setIsPrintDetailOpen(true)}>
                   상세화면
                 </button>

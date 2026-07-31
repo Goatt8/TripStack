@@ -4,6 +4,8 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 
 import { GuidebookPrintDetailModal } from '@/components/guidebook/GuidebookPrintDetailModal';
+import { currentAccount } from '@/features/account/currentAccount';
+import { INTERESTED_CREATOR_EVENT_NAME, readInterestedCreatorIds } from '@/features/interest/creatorInterest';
 import { guidebookService } from '@/services/guidebookService';
 import type { Guidebook, GuidebookBlock, User } from '@/types';
 
@@ -44,7 +46,19 @@ export function CreatorStudioFeed({ creators, guidebooks }: CreatorStudioFeedPro
   const [selectedGuidebook, setSelectedGuidebook] = useState<Guidebook | null>(null);
   const [selectedBlocks, setSelectedBlocks] = useState<GuidebookBlock[]>([]);
   const [isInterestPanelOpen, setIsInterestPanelOpen] = useState(false);
-  const creator = creators[0];
+  const [interestedCreatorIds, setInterestedCreatorIds] = useState<number[]>([]);
+  const creator = creators.find((item) => item.id === currentAccount.creatorId);
+
+  useEffect(() => {
+    setInterestedCreatorIds(readInterestedCreatorIds());
+
+    function syncInterestedCreators(event: Event) {
+      setInterestedCreatorIds((event as CustomEvent<number[]>).detail ?? readInterestedCreatorIds());
+    }
+
+    window.addEventListener(INTERESTED_CREATOR_EVENT_NAME, syncInterestedCreators);
+    return () => window.removeEventListener(INTERESTED_CREATOR_EVENT_NAME, syncInterestedCreators);
+  }, []);
 
   useEffect(() => {
     function closeOnEscape(event: KeyboardEvent) {
@@ -66,6 +80,7 @@ export function CreatorStudioFeed({ creators, guidebooks }: CreatorStudioFeedPro
   const savedGuidebooks = guidebooks.filter((guidebook) => guidebook.creatorId !== creator.id).slice(0, 12);
   const visibleGuidebooks = activeTab === 'mine' ? myGuidebooks : savedGuidebooks;
   const selectedGuidebookCreator = creators.find((item) => item.id === selectedGuidebook?.creatorId);
+  const interestedCreators = creators.filter((item) => interestedCreatorIds.includes(item.id));
 
   async function openPrintDetail(guidebook: Guidebook) {
     setSelectedGuidebook(guidebook);
@@ -98,6 +113,7 @@ export function CreatorStudioFeed({ creators, guidebooks }: CreatorStudioFeedPro
             <circle cx="16.5" cy="9" r="2.75" />
             <path d="M13.5 18.5c1.3-2.9 6.2-2.9 7 0" />
           </svg>
+          <span className="tab-count-badge">{interestedCreators.length}</span>
         </button>
       </nav>
 
@@ -175,15 +191,19 @@ export function CreatorStudioFeed({ creators, guidebooks }: CreatorStudioFeedPro
           </button>
         </div>
         <div className="interest-creator-list">
-          {creators.slice(0, 12).map((item) => (
-            <button className="interest-creator-row" type="button" key={item.id}>
-              <img src={item.avatarUrl} alt={`${item.username} profile`} />
-              <div>
-                <strong>{item.username}</strong>
-                <span>{formatCompactCount(item.followerCount)}</span>
-              </div>
-            </button>
-          ))}
+          {interestedCreators.length === 0 ? (
+            <p className="empty-state">아직 관심 크리에이터가 없습니다.</p>
+          ) : (
+            interestedCreators.map((item) => (
+              <button className="interest-creator-row" type="button" key={item.id}>
+                <img src={item.avatarUrl} alt={`${item.username} profile`} />
+                <div>
+                  <strong>{item.username}</strong>
+                  <span>{formatCompactCount(item.followerCount)}</span>
+                </div>
+              </button>
+            ))
+          )}
         </div>
       </aside>
     </>

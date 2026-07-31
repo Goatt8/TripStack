@@ -1,4 +1,5 @@
 import { MetricCard } from '@/components/common/MetricCard';
+import { currentAccount } from '@/features/account/currentAccount';
 import type { Guidebook, User } from '@/types';
 
 type CreatorDashboardProps = {
@@ -8,7 +9,7 @@ type CreatorDashboardProps = {
 };
 
 export function CreatorDashboard({ creators, guidebooks, totalPrintCount }: CreatorDashboardProps) {
-  const creator = creators[0];
+  const creator = creators.find((item) => item.id === currentAccount.creatorId);
   const creatorGuidebooks = guidebooks.filter((guidebook) => guidebook.creatorId === creator?.id);
 
   if (!creator) {
