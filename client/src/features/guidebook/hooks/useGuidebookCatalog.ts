@@ -85,6 +85,7 @@ export function useGuidebookCatalog() {
     return guidebooks.filter((guidebook) => {
       const searchableText = [
         guidebook.title,
+        guidebook.country,
         guidebook.region,
         guidebook.creatorName,
       ].join(' ').toLowerCase();

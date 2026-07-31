@@ -1,6 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="900" height="540" viewBox="0 0 900 540">
-  <rect width="900" height="540" fill="#eff6ff"/>
-  <path d="M0 380h900v160H0z" fill="#1d4ed8"/>
-  <path d="M90 350h110v-90h80v90h90V210h120v140h100V250h90v100h130v30z" fill="#111827"/>
-  <text x="70" y="100" font-family="Arial" font-size="58" font-weight="700" fill="#1d4ed8">SEOUL</text>
-</svg>

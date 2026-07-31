@@ -16,6 +16,7 @@ export type Guidebook = {
   creatorId: number;
   creatorName: string;
   title: string;
+  country: string;
   region: string;
   coverImageUrl: string;
   printCount: number;

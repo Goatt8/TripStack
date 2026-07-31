@@ -1,6 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="900" height="540" viewBox="0 0 900 540">
-  <rect width="900" height="540" fill="#fff7ed"/>
-  <path d="M120 400h660v80H120zM170 220h90v180h-90zM330 180h90v220h-90zM490 220h90v180h-90zM650 180h90v220h-90z" fill="#9a3412"/>
-  <path d="M110 190h680l-340-90z" fill="#c2410c"/>
-  <text x="70" y="100" font-family="Arial" font-size="58" font-weight="700" fill="#c2410c">ROMA</text>
-</svg>

@@ -2,11 +2,13 @@ import type { LayoutOption, LocationCountryOption, RegionOption, SearchKeywordOp
 
 export const regions: RegionOption[] = [
   { id: 'all', label: '전체' },
-  { id: 'seoul', label: '서울' },
-  { id: 'gyeongju', label: '경주' },
-  { id: 'jeju', label: '제주' },
-  { id: 'roma', label: '로마' },
-  { id: 'bangkok', label: '방콕' },
+  { id: '로마', label: '로마' },
+  { id: '인터라켄', label: '인터라켄' },
+  { id: '오키나와', label: '오키나와' },
+  { id: '푸켓', label: '푸켓' },
+  { id: '파리', label: '파리' },
+  { id: '오사카', label: '오사카' },
+  { id: '아마존', label: '아마존' },
 ];
 
 export const layouts: LayoutOption[] = [
@@ -20,23 +22,36 @@ export const locationCategories: LocationCountryOption[] = [
     id: 'korea',
     label: '대한민국',
     cities: [
-      { id: 'seoul', label: '서울', description: '성수, 종로, 한남, 강남 중심 도시 가이드' },
-      { id: 'jeju', label: '제주', description: '동쪽 카페, 해안도로, 조용한 숙소 큐레이션' },
-      { id: 'gyeongju', label: '경주', description: '황리단길, 야간 산책, 역사 여행 루트' },
+      { id: '강원도', label: '강원도', description: '계곡, 숲길, 서울 근교 여름 코스' },
     ],
   },
   {
     id: 'italy',
     label: '이탈리아',
     cities: [
-      { id: 'roma', label: '로마', description: '라치오주, 미술관, 광장, 골목 동선' },
+      { id: '로마', label: '로마', description: '광장, 골목, 클래식 여행지 중심 동선' },
     ],
   },
   {
-    id: 'thailand',
-    label: '태국',
+    id: 'japan',
+    label: '일본',
     cities: [
-      { id: 'bangkok', label: '방콕', description: '시장, 루프탑, 야간 동선 중심 가이드' },
+      { id: '오사카', label: '오사카', description: '저장해두고 보기 좋은 도심 여행' },
+      { id: '오키나와', label: '오키나와', description: '해안 드라이브와 휴양 코스' },
+    ],
+  },
+  {
+    id: 'france',
+    label: '프랑스',
+    cities: [
+      { id: '파리', label: '파리', description: '도시 산책과 클래식 명소 중심 가이드' },
+    ],
+  },
+  {
+    id: 'brazil',
+    label: '브라질',
+    cities: [
+      { id: '아마존', label: '아마존', description: '자연과 사파리 분위기의 탐험 코스' },
     ],
   },
 ];
@@ -58,4 +73,16 @@ export const guidebookKeywordMap: Record<string, string[]> = {
   jeju: ['summer', 'resort', 'cafe', 'weather'],
   roma: ['city', 'walk', 'winter', 'weather'],
   bangkok: ['summer', 'city', 'resort', 'weather'],
+  아마존: ['summer', 'resort', 'weather'],
+  강원도: ['summer', 'resort', 'walk', 'weather'],
+  안타나나리보: ['summer', 'resort', 'weather'],
+  오키나와: ['summer', 'resort', 'weather'],
+  인터라켄: ['winter', 'resort', 'walk', 'weather'],
+  코펜하겐: ['winter', 'city', 'walk'],
+  로마: ['city', 'walk', 'winter', 'weather'],
+  푸켓: ['summer', 'resort', 'weather'],
+  벤쿠버: ['summer', 'resort', 'walk', 'weather'],
+  오사카: ['city', 'cafe', 'walk', 'weather'],
+  제네바: ['winter', 'city', 'walk', 'weather'],
+  파리: ['city', 'cafe', 'walk', 'weather'],
 };

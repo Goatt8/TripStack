@@ -42,13 +42,14 @@ app.get('/api/guidebooks', (request, response) => {
       guidebooks.creator_id AS creatorId,
       users.username AS creatorName,
       guidebooks.title,
+      guidebooks.country,
       guidebooks.region,
       guidebooks.cover_image_url AS coverImageUrl,
       guidebooks.print_count AS printCount,
       users.follower_count AS followerCount,
       users.trust_score AS trustScore,
       COUNT(guidebook_blocks.id) AS blockCount,
-      RANK() OVER (PARTITION BY guidebooks.region ORDER BY guidebooks.print_count DESC) AS rankInRegion
+      RANK() OVER (PARTITION BY guidebooks.country, guidebooks.region ORDER BY guidebooks.print_count DESC) AS rankInRegion
     FROM guidebooks
     JOIN users ON users.id = guidebooks.creator_id
     LEFT JOIN guidebook_blocks ON guidebook_blocks.guidebook_id = guidebooks.id

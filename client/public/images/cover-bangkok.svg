@@ -1,6 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="900" height="540" viewBox="0 0 900 540">
-  <rect width="900" height="540" fill="#f5f3ff"/>
-  <path d="M120 390h660v80H120zM210 260h80v130h-80zM350 200h80v190h-80zM490 250h80v140h-80zM630 180h80v210h-80z" fill="#6d28d9"/>
-  <path d="M150 160h600v45H150z" fill="#a78bfa"/>
-  <text x="70" y="100" font-family="Arial" font-size="58" font-weight="700" fill="#6d28d9">BANGKOK</text>
-</svg>
