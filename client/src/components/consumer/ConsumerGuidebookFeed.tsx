@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 
+import { TopTabBar } from '@/components/common/TopTabBar';
 import { CreatorRail } from '@/components/consumer/CreatorRail';
 import { GuidebookCategorySections } from '@/components/consumer/GuidebookCategorySections';
 import { GuidebookSearchBar } from '@/components/consumer/GuidebookSearchBar';
@@ -26,34 +27,6 @@ type ConsumerGuidebookFeedProps = {
   onGuidebookSelect: (guidebook: Guidebook) => void;
   onSearchSubmit: (query: string, keyword: string) => void;
 };
-
-function HomeIcon() {
-  return (
-    <svg aria-hidden="true" viewBox="0 0 24 24">
-      <path d="M4 11.5 12 5l8 6.5" />
-      <path d="M6.5 10.5V20h11v-9.5" />
-      <path d="M10 20v-5h4v5" />
-    </svg>
-  );
-}
-
-function SearchIcon() {
-  return (
-    <svg aria-hidden="true" viewBox="0 0 24 24">
-      <circle cx="10.5" cy="10.5" r="5.75" />
-      <path d="m15 15 5 5" />
-    </svg>
-  );
-}
-
-function UserIcon() {
-  return (
-    <svg aria-hidden="true" viewBox="0 0 24 24">
-      <circle cx="12" cy="8" r="4" />
-      <path d="M5 20c1.5-4 12.5-4 14 0" />
-    </svg>
-  );
-}
 
 function formatCompactCount(count: number) {
   if (count >= 10000) {
@@ -119,37 +92,21 @@ export function ConsumerGuidebookFeed(props: ConsumerGuidebookFeedProps) {
 
   return (
     <>
-      <nav className={isSearchOpen ? 'consumer-feed-tabs search-open' : 'consumer-feed-tabs'} aria-label="컨슈머 주요 탭">
-        <Link
-          className={isSearchOpen ? 'consumer-feed-tab' : 'consumer-feed-tab active'}
-          href="/"
-          aria-label="홈"
-          onClick={() => setIsSearchOpen(false)}>
-          <HomeIcon />
-        </Link>
-        <Link className="consumer-feed-tab" href="/creator" aria-label="마이페이지">
-          <UserIcon />
-        </Link>
-        <button
-          className={isSearchOpen ? 'consumer-feed-tab active' : 'consumer-feed-tab'}
-          type="button"
-          aria-label="검색"
-          onClick={() => setIsSearchOpen((previous) => !previous)}>
-          <SearchIcon />
-        </button>
-
-        <div className="consumer-feed-search">
-          {isSearchOpen && (
-            <GuidebookSearchBar
-              guidebooks={props.guidebooks}
-              searchKeywords={props.searchKeywords}
-              searchQuery={props.searchQuery}
-              selectedKeyword={props.selectedKeyword}
-              onSearchSubmit={props.onSearchSubmit}
-            />
-          )}
-        </div>
-      </nav>
+      <TopTabBar
+        mode="home"
+        isSearchOpen={isSearchOpen}
+        onHomeClick={() => setIsSearchOpen(false)}
+        onSearchToggle={() => setIsSearchOpen((previous) => !previous)}
+        searchContent={
+          <GuidebookSearchBar
+            guidebooks={props.guidebooks}
+            searchKeywords={props.searchKeywords}
+            searchQuery={props.searchQuery}
+            selectedKeyword={props.selectedKeyword}
+            onSearchSubmit={props.onSearchSubmit}
+          />
+        }
+      />
 
       <div className="consumer-feed-content">
         <CreatorRail creators={props.creators} />

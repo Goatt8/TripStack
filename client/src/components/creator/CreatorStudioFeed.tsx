@@ -1,8 +1,8 @@
 'use client';
 
-import Link from 'next/link';
 import { useEffect, useState } from 'react';
 
+import { TopTabBar } from '@/components/common/TopTabBar';
 import { GuidebookPrintDetailModal } from '@/components/guidebook/GuidebookPrintDetailModal';
 import { currentAccount } from '@/features/account/currentAccount';
 import { INTERESTED_CREATOR_EVENT_NAME, readInterestedCreatorIds } from '@/features/interest/creatorInterest';
@@ -13,25 +13,6 @@ type CreatorStudioFeedProps = {
   creators: User[];
   guidebooks: Guidebook[];
 };
-
-function HomeIcon() {
-  return (
-    <svg aria-hidden="true" viewBox="0 0 24 24">
-      <path d="M4 11.5 12 5l8 6.5" />
-      <path d="M6.5 10.5V20h11v-9.5" />
-      <path d="M10 20v-5h4v5" />
-    </svg>
-  );
-}
-
-function UserIcon() {
-  return (
-    <svg aria-hidden="true" viewBox="0 0 24 24">
-      <circle cx="12" cy="8" r="4" />
-      <path d="M5 20c1.5-4 12.5-4 14 0" />
-    </svg>
-  );
-}
 
 function formatCompactCount(count: number) {
   if (count >= 10000) {
@@ -95,27 +76,12 @@ export function CreatorStudioFeed({ creators, guidebooks }: CreatorStudioFeedPro
 
   return (
     <>
-      <nav className="consumer-feed-tabs creator-top-tabs" aria-label="크리에이터 주요 탭">
-        <Link className="consumer-feed-tab" href="/" aria-label="홈">
-          <HomeIcon />
-        </Link>
-        <Link className="consumer-feed-tab active" href="/creator" aria-label="마이페이지">
-          <UserIcon />
-        </Link>
-        <button
-          className={isInterestPanelOpen ? 'consumer-feed-tab active' : 'consumer-feed-tab'}
-          type="button"
-          aria-label="관심 크리에이터"
-          onClick={() => setIsInterestPanelOpen((previous) => !previous)}>
-          <svg aria-hidden="true" viewBox="0 0 24 24">
-            <circle cx="9" cy="8" r="3.25" />
-            <path d="M3.5 19c1-4.2 10-4.2 11 0" />
-            <circle cx="16.5" cy="9" r="2.75" />
-            <path d="M13.5 18.5c1.3-2.9 6.2-2.9 7 0" />
-          </svg>
-          <span className="tab-count-badge">{interestedCreators.length}</span>
-        </button>
-      </nav>
+      <TopTabBar
+        mode="creator"
+        isInterestOpen={isInterestPanelOpen}
+        interestCount={interestedCreators.length}
+        onInterestToggle={() => setIsInterestPanelOpen((previous) => !previous)}
+      />
 
       <div className="creator-studio-content">
         <section className="creator-profile-summary">
