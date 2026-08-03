@@ -98,14 +98,16 @@ export function TopTabBar({
           <div className="consumer-feed-search">{isSearchOpen && searchContent}</div>
         </>
       ) : (
-        <button
-          className={isInterestOpen ? 'consumer-feed-tab active' : 'consumer-feed-tab'}
-          type="button"
+        <>
+          <button
+            className={isInterestOpen ? 'consumer-feed-tab active' : 'consumer-feed-tab'}
+            type="button"
           aria-label="관심 크리에이터"
           onClick={onInterestToggle}>
           <PeopleIcon />
-          <span className="tab-count-badge">{interestCount}</span>
+          {interestCount > 0 && <span className="tab-count-badge">{interestCount}</span>}
         </button>
+        </>
       )}
     </nav>
   );

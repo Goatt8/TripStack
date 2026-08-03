@@ -11,8 +11,8 @@ import { GuidebookPrintDetailModal } from '@/components/guidebook/GuidebookPrint
 import { currentAccount } from '@/features/account/currentAccount';
 import {
   INTERESTED_CREATOR_EVENT_NAME,
-  addInterestedCreatorId,
   readInterestedCreatorIds,
+  toggleInterestedCreatorId,
 } from '@/features/interest/creatorInterest';
 import type { Guidebook, GuidebookBlock, SearchKeywordOption, User } from '@/types';
 
@@ -34,6 +34,14 @@ function formatCompactCount(count: number) {
   }
 
   return count.toLocaleString();
+}
+
+function HeartIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24">
+      <path d="M20.5 8.9c0 5.3-8.5 10-8.5 10s-8.5-4.7-8.5-10A4.7 4.7 0 0 1 12 6a4.7 4.7 0 0 1 8.5 2.9Z" />
+    </svg>
+  );
 }
 
 export function ConsumerGuidebookFeed(props: ConsumerGuidebookFeedProps) {
@@ -78,7 +86,7 @@ export function ConsumerGuidebookFeed(props: ConsumerGuidebookFeedProps) {
     setIsPrintDetailOpen(false);
   }
 
-  function addSelectedCreatorToInterest() {
+  function toggleSelectedCreatorInterest() {
     if (!selectedCreator) {
       return;
     }
@@ -87,7 +95,7 @@ export function ConsumerGuidebookFeed(props: ConsumerGuidebookFeedProps) {
       return;
     }
 
-    setInterestedCreatorIds(addInterestedCreatorId(selectedCreator.id));
+    setInterestedCreatorIds(toggleInterestedCreatorId(selectedCreator.id));
   }
 
   return (
@@ -145,21 +153,26 @@ export function ConsumerGuidebookFeed(props: ConsumerGuidebookFeedProps) {
               <div className="guidebook-detail-creator">
                 {selectedCreator && <img src={selectedCreator.avatarUrl} alt={`${selectedCreator.username} profile`} />}
                 <div>
-                  <strong>{props.selectedGuidebook.creatorName}</strong>
+                  <div className="guidebook-detail-creator-name">
+                    <strong>{props.selectedGuidebook.creatorName}</strong>
+                    {!isSelectedCreatorCurrentAccount && selectedCreator && (
+                      <button
+                        className={isSelectedCreatorInterested ? 'creator-heart-toggle active' : 'creator-heart-toggle'}
+                        type="button"
+                        aria-label={isSelectedCreatorInterested ? '관심 크리에이터 해제' : '관심 크리에이터 추가'}
+                        aria-pressed={isSelectedCreatorInterested}
+                        onClick={toggleSelectedCreatorInterest}>
+                        <HeartIcon />
+                      </button>
+                    )}
+                  </div>
                   <p>{props.selectedGuidebook.followerCount.toLocaleString()}</p>
                 </div>
               </div>
               <div className="guidebook-detail-actions">
                 {isSelectedCreatorCurrentAccount ? (
                   <Link href="/creator">내 화면</Link>
-                ) : (
-                  <button
-                    className={isSelectedCreatorInterested ? 'interested' : ''}
-                    type="button"
-                    onClick={addSelectedCreatorToInterest}>
-                    {isSelectedCreatorInterested ? '관심중' : '관심'}
-                  </button>
-                )}
+                ) : null}
                 <button type="button" onClick={() => setIsPrintDetailOpen(true)}>
                   상세화면
                 </button>

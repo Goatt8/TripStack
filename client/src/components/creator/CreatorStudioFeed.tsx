@@ -13,7 +13,11 @@ import {
   readDeletedGuidebookIds,
   readHiddenGuidebookIds,
 } from '@/features/creator/creatorGuidebookManage';
-import { INTERESTED_CREATOR_EVENT_NAME, readInterestedCreatorIds } from '@/features/interest/creatorInterest';
+import {
+  INTERESTED_CREATOR_EVENT_NAME,
+  readInterestedCreatorIds,
+  toggleInterestedCreatorId,
+} from '@/features/interest/creatorInterest';
 import { guidebookService } from '@/services/guidebookService';
 import type { Guidebook, GuidebookBlock, User } from '@/types';
 
@@ -29,6 +33,14 @@ function formatCompactCount(count: number) {
   }
 
   return count.toLocaleString();
+}
+
+function HeartIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24">
+      <path d="M20.5 8.9c0 5.3-8.5 10-8.5 10s-8.5-4.7-8.5-10A4.7 4.7 0 0 1 12 6a4.7 4.7 0 0 1 8.5 2.9Z" />
+    </svg>
+  );
 }
 
 export function CreatorStudioFeed({ creators, guidebooks, viewedCreatorId = currentAccount.creatorId }: CreatorStudioFeedProps) {
@@ -105,6 +117,8 @@ export function CreatorStudioFeed({ creators, guidebooks, viewedCreatorId = curr
   const visibleGuidebooks = isOwnCreator && activeTab === 'saved' ? savedGuidebooks : creatorGuidebooks;
   const selectedGuidebookCreator = creators.find((item) => item.id === selectedGuidebook?.creatorId);
   const interestedCreators = creators.filter((item) => interestedCreatorIds.includes(item.id));
+  const isViewedCreatorInterested = interestedCreatorIds.includes(creator.id);
+  const visibleFollowerCount = isViewedCreatorInterested ? 1 : 0;
 
   async function openPrintDetail(guidebook: Guidebook) {
     setSelectedGuidebook(guidebook);
@@ -148,6 +162,14 @@ export function CreatorStudioFeed({ creators, guidebooks, viewedCreatorId = curr
 
     setHiddenGuidebookIds(addHiddenGuidebookId(selectedGuidebook.id));
     closePrintDetail();
+  }
+
+  function toggleViewedCreatorInterest() {
+    if (isOwnCreator || !creator) {
+      return;
+    }
+
+    setInterestedCreatorIds(toggleInterestedCreatorId(creator.id));
   }
 
   async function createGuidebookFromDraft(draft: CreateGuidebookDraft) {
@@ -197,11 +219,23 @@ export function CreatorStudioFeed({ creators, guidebooks, viewedCreatorId = curr
         <section className="creator-profile-summary">
           <img src={creator.avatarUrl} alt={`${creator.username} profile`} />
           <div>
-            <h2>{creator.username}</h2>
+            <div className="creator-profile-title-row">
+              <h2>{creator.username}</h2>
+              {!isOwnCreator && (
+                <button
+                  className={isViewedCreatorInterested ? 'creator-profile-heart active' : 'creator-profile-heart'}
+                  type="button"
+                  aria-label={isViewedCreatorInterested ? '관심 크리에이터 해제' : '관심 크리에이터 추가'}
+                  aria-pressed={isViewedCreatorInterested}
+                  onClick={toggleViewedCreatorInterest}>
+                  <HeartIcon />
+                </button>
+              )}
+            </div>
             <p>{creator.bio}</p>
             <div className="creator-profile-stats">
               <span>출판수 {formatCompactCount(creator.followerCount)}</span>
-              <span>팔로워 0</span>
+              <span>팔로워 {visibleFollowerCount}</span>
               <span>{creatorGuidebooks.length}개 가이드북</span>
             </div>
           </div>

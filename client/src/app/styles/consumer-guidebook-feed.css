@@ -1,7 +1,7 @@
 .consumer-feed-tabs {
   position: sticky;
   top: 12px;
-  z-index: 20;
+  z-index: 40;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -249,6 +249,56 @@
   font-weight: 900;
 }
 
+.guidebook-detail-creator-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.guidebook-detail-creator-name strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.creator-heart-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 24px;
+  width: 24px;
+  height: 24px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #98a2b3;
+  padding: 0;
+}
+
+.creator-heart-toggle svg {
+  width: 17px;
+  height: 17px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2.1;
+}
+
+.creator-heart-toggle:hover {
+  background: #f2f4f7;
+  color: #667085;
+}
+
+.creator-heart-toggle.active {
+  color: #ef4444;
+}
+
+.creator-heart-toggle.active svg {
+  fill: currentColor;
+}
+
 .guidebook-detail-creator p {
   margin: 3px 0 0;
   color: #667085;
@@ -282,16 +332,6 @@
 .guidebook-detail-actions button:hover {
   border-color: #101828;
   background: #f8fafc;
-}
-
-.guidebook-detail-actions button.interested {
-  border-color: #101828;
-  background: #101828;
-  color: #ffffff;
-}
-
-.guidebook-detail-actions button.interested:hover {
-  background: #101828;
 }
 
 .guidebook-detail-scroll {

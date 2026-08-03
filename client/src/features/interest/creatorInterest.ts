@@ -38,3 +38,17 @@ export function writeInterestedCreatorIds(creatorIds: number[]) {
 export function addInterestedCreatorId(creatorId: number) {
   return writeInterestedCreatorIds([...readInterestedCreatorIds(), creatorId]);
 }
+
+export function removeInterestedCreatorId(creatorId: number) {
+  return writeInterestedCreatorIds(readInterestedCreatorIds().filter((id) => id !== creatorId));
+}
+
+export function toggleInterestedCreatorId(creatorId: number) {
+  const creatorIds = readInterestedCreatorIds();
+
+  if (creatorIds.includes(creatorId)) {
+    return writeInterestedCreatorIds(creatorIds.filter((id) => id !== creatorId));
+  }
+
+  return writeInterestedCreatorIds([...creatorIds, creatorId]);
+}

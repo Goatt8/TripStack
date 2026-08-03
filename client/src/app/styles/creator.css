@@ -55,6 +55,50 @@
   letter-spacing: 0;
 }
 
+.creator-profile-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.creator-profile-heart {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 28px;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #98a2b3;
+  padding: 0;
+}
+
+.creator-profile-heart svg {
+  width: 19px;
+  height: 19px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2.1;
+}
+
+.creator-profile-heart:hover {
+  background: #f2f4f7;
+  color: #667085;
+}
+
+.creator-profile-heart.active {
+  color: #ef4444;
+}
+
+.creator-profile-heart.active svg {
+  fill: currentColor;
+}
+
 .creator-profile-summary p {
   max-width: 620px;
   margin: 7px 0 0;
