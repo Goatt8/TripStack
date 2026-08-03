@@ -60,6 +60,22 @@ export type Order = {
   createdAt: string;
 };
 
+export type PrintCartItem = {
+  id: number;
+  userId: number;
+  guidebookId: number;
+  quantity: number;
+  createdAt: string;
+  updatedAt: string;
+  creatorId: number;
+  creatorName: string;
+  title: string;
+  country: string;
+  region: string;
+  coverImageUrl: string;
+  printCount: number;
+};
+
 export type RegionOption = {
   id: string;
   label: string;

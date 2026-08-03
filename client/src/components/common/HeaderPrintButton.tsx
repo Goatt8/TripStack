@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useState } from 'react';
 
 import { BASKET_GUIDEBOOK_EVENT_NAME, readBasketGuidebookIds } from '@/features/basket/guidebookBasket';
@@ -19,10 +20,18 @@ export function HeaderPrintButton() {
   const [basketCount, setBasketCount] = useState(0);
 
   useEffect(() => {
-    setBasketCount(readBasketGuidebookIds().length);
+    async function refreshBasketCount() {
+      try {
+        setBasketCount((await readBasketGuidebookIds()).length);
+      } catch {
+        setBasketCount(0);
+      }
+    }
+
+    void refreshBasketCount();
 
     function syncBasketCount(event: Event) {
-      setBasketCount(((event as CustomEvent<number[]>).detail ?? readBasketGuidebookIds()).length);
+      setBasketCount(((event as CustomEvent<number[]>).detail ?? []).length);
     }
 
     window.addEventListener(BASKET_GUIDEBOOK_EVENT_NAME, syncBasketCount);
@@ -30,9 +39,9 @@ export function HeaderPrintButton() {
   }, []);
 
   return (
-    <button className="header-print-button" type="button" aria-label={`담아둔 가이드북 ${basketCount}개 인쇄하기`}>
+    <Link className="header-print-button" href="/print-cart" aria-label={`담아둔 가이드북 ${basketCount}개 인쇄하기`}>
       <PaperIcon />
       <span>{basketCount}</span>
-    </button>
+    </Link>
   );
 }

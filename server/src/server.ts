@@ -49,6 +49,22 @@ type GuidebookBlockRow = {
   imageUrl: string;
 };
 
+type PrintCartItemRow = {
+  id: number;
+  userId: number;
+  guidebookId: number;
+  quantity: number;
+  createdAt: string;
+  updatedAt: string;
+  creatorId: number;
+  creatorName: string;
+  title: string;
+  country: string;
+  region: string;
+  coverImageUrl: string;
+  printCount: number;
+};
+
 type CreateGuidebookBody = {
   creatorId?: number;
   title?: string;
@@ -134,6 +150,30 @@ function getGuidebookById(guidebookId: number) {
     ...guidebook,
     routePoints,
   };
+}
+
+function getPrintCartItems(userId: number) {
+  return db.prepare(`
+    SELECT
+      print_cart_items.id,
+      print_cart_items.user_id AS userId,
+      print_cart_items.guidebook_id AS guidebookId,
+      print_cart_items.quantity,
+      print_cart_items.created_at AS createdAt,
+      print_cart_items.updated_at AS updatedAt,
+      guidebooks.creator_id AS creatorId,
+      users.username AS creatorName,
+      guidebooks.title,
+      guidebooks.country,
+      guidebooks.region,
+      guidebooks.cover_image_url AS coverImageUrl,
+      guidebooks.print_count AS printCount
+    FROM print_cart_items
+    JOIN guidebooks ON guidebooks.id = print_cart_items.guidebook_id
+    JOIN users ON users.id = guidebooks.creator_id
+    WHERE print_cart_items.user_id = ?
+    ORDER BY print_cart_items.created_at DESC
+  `).all(userId) as PrintCartItemRow[];
 }
 
 app.get('/api/health', (_request, response) => {
@@ -226,6 +266,95 @@ app.get('/api/guidebooks/:id/blocks', (request, response) => {
   `).all(request.params.id);
 
   response.json(rows);
+});
+
+app.get('/api/print-cart', (request, response) => {
+  const userId = Number(request.query.userId);
+
+  if (!Number.isInteger(userId)) {
+    response.status(400).json({ message: 'userId is required.' });
+    return;
+  }
+
+  response.json(getPrintCartItems(userId));
+});
+
+app.post('/api/print-cart', (request, response) => {
+  const { guidebookId, quantity, userId } = request.body as {
+    guidebookId?: number;
+    quantity?: number;
+    userId?: number;
+  };
+
+  if (!userId || !guidebookId) {
+    response.status(400).json({ message: 'userId and guidebookId are required.' });
+    return;
+  }
+
+  const guidebook = db.prepare('SELECT id FROM guidebooks WHERE id = ?').get(guidebookId);
+
+  if (!guidebook) {
+    response.status(404).json({ message: 'Guidebook not found.' });
+    return;
+  }
+
+  db.prepare(`
+    INSERT INTO print_cart_items (user_id, guidebook_id, quantity)
+    VALUES (@userId, @guidebookId, @quantity)
+    ON CONFLICT(user_id, guidebook_id) DO UPDATE SET
+      updated_at = CURRENT_TIMESTAMP
+  `).run({
+    userId,
+    guidebookId,
+    quantity: Math.max(1, quantity ?? 1),
+  });
+
+  response.status(201).json(getPrintCartItems(userId).find((item) => item.guidebookId === guidebookId));
+});
+
+app.patch('/api/print-cart/:guidebookId', (request, response) => {
+  const guidebookId = Number(request.params.guidebookId);
+  const { quantity, userId } = request.body as { quantity?: number; userId?: number };
+
+  if (!userId || !Number.isInteger(guidebookId) || !quantity || quantity < 1) {
+    response.status(400).json({ message: 'userId, guidebookId, and positive quantity are required.' });
+    return;
+  }
+
+  db.prepare(`
+    UPDATE print_cart_items
+    SET quantity = @quantity,
+        updated_at = CURRENT_TIMESTAMP
+    WHERE user_id = @userId
+      AND guidebook_id = @guidebookId
+  `).run({ userId, guidebookId, quantity });
+
+  const updated = getPrintCartItems(userId).find((item) => item.guidebookId === guidebookId);
+
+  if (!updated) {
+    response.status(404).json({ message: 'Print cart item not found.' });
+    return;
+  }
+
+  response.json(updated);
+});
+
+app.delete('/api/print-cart/:guidebookId', (request, response) => {
+  const guidebookId = Number(request.params.guidebookId);
+  const userId = Number(request.query.userId);
+
+  if (!Number.isInteger(userId) || !Number.isInteger(guidebookId)) {
+    response.status(400).json({ message: 'userId and guidebookId are required.' });
+    return;
+  }
+
+  db.prepare(`
+    DELETE FROM print_cart_items
+    WHERE user_id = ?
+      AND guidebook_id = ?
+  `).run(userId, guidebookId);
+
+  response.status(204).send();
 });
 
 app.post('/api/guidebooks', (request, response) => {

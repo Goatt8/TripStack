@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import {
   addBasketGuidebookId,
@@ -41,11 +41,29 @@ export function GuidebookPrintDetailModal({
   showBasketAction = false,
 }: GuidebookPrintDetailModalProps) {
   const [isManageMenuOpen, setIsManageMenuOpen] = useState(false);
-  const [isBasketed, setIsBasketed] = useState(() => readBasketGuidebookIds().includes(guidebook.id));
+  const [isBasketed, setIsBasketed] = useState(false);
+  const [isBasketUpdating, setIsBasketUpdating] = useState(false);
 
-  function toggleBasket() {
-    const nextGuidebookIds = isBasketed ? removeBasketGuidebookId(guidebook.id) : addBasketGuidebookId(guidebook.id);
-    setIsBasketed(nextGuidebookIds.includes(guidebook.id));
+  useEffect(() => {
+    async function loadBasketState() {
+      if (!showBasketAction) {
+        return;
+      }
+
+      setIsBasketed((await readBasketGuidebookIds()).includes(guidebook.id));
+    }
+
+    void loadBasketState();
+  }, [guidebook.id, showBasketAction]);
+
+  async function toggleBasket() {
+    try {
+      setIsBasketUpdating(true);
+      const nextGuidebookIds = isBasketed ? await removeBasketGuidebookId(guidebook.id) : await addBasketGuidebookId(guidebook.id);
+      setIsBasketed(nextGuidebookIds.includes(guidebook.id));
+    } finally {
+      setIsBasketUpdating(false);
+    }
   }
 
   return (
@@ -59,7 +77,8 @@ export function GuidebookPrintDetailModal({
             <button
               className={isBasketed ? 'print-detail-basket basketed' : 'print-detail-basket'}
               type="button"
-              onClick={toggleBasket}>
+              disabled={isBasketUpdating}
+              onClick={() => void toggleBasket()}>
               {isBasketed ? '내 가이드북에서 빼기' : '내 가이드북에 담기'}
             </button>
           )}

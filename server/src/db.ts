@@ -64,6 +64,18 @@ export function initializeDatabase() {
       FOREIGN KEY (guidebook_id) REFERENCES guidebooks(id)
     );
 
+    CREATE TABLE IF NOT EXISTS print_cart_items (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      guidebook_id INTEGER NOT NULL,
+      quantity INTEGER NOT NULL DEFAULT 1 CHECK(quantity > 0),
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(user_id, guidebook_id),
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+      FOREIGN KEY (guidebook_id) REFERENCES guidebooks(id) ON DELETE CASCADE
+    );
+
     CREATE TABLE IF NOT EXISTS orders (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       consumer_id INTEGER NOT NULL,

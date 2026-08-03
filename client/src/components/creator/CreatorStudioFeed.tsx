@@ -72,10 +72,18 @@ export function CreatorStudioFeed({ creators, guidebooks, viewedCreatorId = curr
   }, []);
 
   useEffect(() => {
-    setBasketGuidebookIds(readBasketGuidebookIds());
+    async function refreshBasketGuidebooks() {
+      try {
+        setBasketGuidebookIds(await readBasketGuidebookIds());
+      } catch {
+        setBasketGuidebookIds([]);
+      }
+    }
+
+    void refreshBasketGuidebooks();
 
     function syncBasketGuidebooks(event: Event) {
-      setBasketGuidebookIds((event as CustomEvent<number[]>).detail ?? readBasketGuidebookIds());
+      setBasketGuidebookIds((event as CustomEvent<number[]>).detail ?? []);
     }
 
     window.addEventListener(BASKET_GUIDEBOOK_EVENT_NAME, syncBasketGuidebooks);
