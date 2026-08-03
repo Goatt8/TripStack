@@ -83,6 +83,11 @@ type CreateGuidebookBody = {
     content?: string;
     imageUrl?: string;
   };
+  blocks?: Array<{
+    placeName?: string;
+    content?: string;
+    imageUrl?: string;
+  }>;
 };
 
 const app = express();
@@ -360,6 +365,7 @@ app.delete('/api/print-cart/:guidebookId', (request, response) => {
 app.post('/api/guidebooks', (request, response) => {
   const {
     block,
+    blocks,
     country,
     coverImageUrl,
     creatorId,
@@ -398,14 +404,27 @@ app.post('/api/guidebooks', (request, response) => {
 
     const guidebookId = Number(createdGuidebook.lastInsertRowid);
 
-    db.prepare(`
+    const blockInputs = blocks && blocks.length > 0 ? blocks : block ? [block] : [];
+    const normalizedBlocks = blockInputs.length > 0 ? blockInputs : [
+      {
+        placeName: `${region} 주요 장면`,
+        content: '생성 모달에서 입력한 가이드북 상세 설명입니다.',
+        imageUrl: coverImageUrl,
+      },
+    ];
+    const insertBlock = db.prepare(`
       INSERT INTO guidebook_blocks (guidebook_id, step_order, place_name, content, image_url)
-      VALUES (@guidebookId, 1, @placeName, @content, @imageUrl)
-    `).run({
-      guidebookId,
-      placeName: block?.placeName?.trim() || `${region} 주요 장면`,
-      content: block?.content?.trim() || '생성 모달에서 입력한 가이드북 상세 설명입니다.',
-      imageUrl: block?.imageUrl?.trim() || coverImageUrl,
+      VALUES (@guidebookId, @stepOrder, @placeName, @content, @imageUrl)
+    `);
+
+    normalizedBlocks.forEach((item, index) => {
+      insertBlock.run({
+        guidebookId,
+        stepOrder: index + 1,
+        placeName: item.placeName?.trim() || `${region} 주요 장면 ${index + 1}`,
+        content: item.content?.trim() || '생성 모달에서 입력한 가이드북 상세 설명입니다.',
+        imageUrl: item.imageUrl?.trim() || coverImageUrl,
+      });
     });
 
     const insertRoutePoint = db.prepare(`
@@ -431,7 +450,7 @@ app.post('/api/guidebooks', (request, response) => {
 
   const guidebookId = transaction();
   const guidebook = getGuidebookById(guidebookId);
-  const blocks = db.prepare(`
+  const createdBlocks = db.prepare(`
     SELECT
       id,
       guidebook_id AS guidebookId,
@@ -444,7 +463,7 @@ app.post('/api/guidebooks', (request, response) => {
     ORDER BY step_order ASC
   `).all(guidebookId) as GuidebookBlockRow[];
 
-  response.status(201).json({ guidebook, blocks });
+  response.status(201).json({ guidebook, blocks: createdBlocks });
 });
 
 app.get('/api/orders', (_request, response) => {

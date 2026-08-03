@@ -4,7 +4,7 @@ import Link from 'next/link';
 import type { ReactNode } from 'react';
 
 type TopTabBarProps = {
-  mode: 'home' | 'creator';
+  mode: 'home' | 'creator' | 'cart';
   isSearchOpen?: boolean;
   isInterestOpen?: boolean;
   interestCount?: number;
@@ -64,16 +64,18 @@ export function TopTabBar({
   onInterestToggle,
 }: TopTabBarProps) {
   const isHomeMode = mode === 'home';
+  const isCreatorMode = mode === 'creator';
   const navClassName = [
     'consumer-feed-tabs',
-    mode === 'creator' ? 'creator-top-tabs' : '',
+    isCreatorMode ? 'creator-top-tabs' : '',
+    mode === 'cart' ? 'cart-top-tabs' : '',
     isHomeMode && isSearchOpen ? 'search-open' : '',
   ]
     .filter(Boolean)
     .join(' ');
 
   return (
-    <nav className={navClassName} aria-label={isHomeMode ? '컨슈머 주요 탭' : '크리에이터 주요 탭'}>
+    <nav className={navClassName} aria-label={isHomeMode ? '컨슈머 주요 탭' : '주요 화면 이동'}>
       <Link
         className={isHomeMode && !isSearchOpen ? 'consumer-feed-tab active' : 'consumer-feed-tab'}
         href="/"
@@ -81,7 +83,7 @@ export function TopTabBar({
         onClick={onHomeClick}>
         <HomeIcon />
       </Link>
-      <Link className={mode === 'creator' ? 'consumer-feed-tab active' : 'consumer-feed-tab'} href="/creator" aria-label="마이페이지">
+      <Link className={isCreatorMode ? 'consumer-feed-tab active' : 'consumer-feed-tab'} href="/creator" aria-label="마이페이지">
         <UserIcon />
       </Link>
 
@@ -97,7 +99,7 @@ export function TopTabBar({
 
           <div className="consumer-feed-search">{isSearchOpen && searchContent}</div>
         </>
-      ) : (
+      ) : isCreatorMode ? (
         <>
           <button
             className={isInterestOpen ? 'consumer-feed-tab active' : 'consumer-feed-tab'}
@@ -108,7 +110,7 @@ export function TopTabBar({
           {interestCount > 0 && <span className="tab-count-badge">{interestCount}</span>}
         </button>
         </>
-      )}
+      ) : null}
     </nav>
   );
 }

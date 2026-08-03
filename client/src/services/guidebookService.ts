@@ -9,11 +9,11 @@ export type CreateGuidebookPayload = {
   coverImageUrl: string;
   mapImageUrl: string;
   routePoints: Array<Pick<GuidebookRoutePoint, 'pointOrder' | 'title' | 'x' | 'y'>>;
-  block: {
+  blocks: Array<{
     placeName: string;
     content: string;
     imageUrl: string;
-  };
+  }>;
 };
 
 export type CreateGuidebookResponse = {

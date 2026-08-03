@@ -185,13 +185,12 @@ export function CreatorStudioFeed({ creators, guidebooks, viewedCreatorId = curr
       return;
     }
 
-    const coverImageUrl = draft.coverImageUrl.startsWith('blob:') ? draft.mapImageUrl : draft.coverImageUrl;
     const created = await guidebookService.createGuidebook({
       creatorId: creator.id,
       title: draft.title,
       country: draft.country,
       region: draft.region,
-      coverImageUrl,
+      coverImageUrl: draft.coverImageUrl,
       mapImageUrl: draft.mapImageUrl,
       routePoints: draft.routePoints.map((point) => ({
         pointOrder: point.pointOrder,
@@ -199,11 +198,11 @@ export function CreatorStudioFeed({ creators, guidebooks, viewedCreatorId = curr
         x: point.x,
         y: point.y,
       })),
-      block: {
-        placeName: draft.subtitle,
-        content: draft.content,
-        imageUrl: coverImageUrl,
-      },
+      blocks: draft.blocks.map((block) => ({
+        placeName: block.title,
+        content: block.content,
+        imageUrl: block.imageUrl,
+      })),
     });
 
     setCreatedGuidebooks((previous) => [created.guidebook, ...previous]);
@@ -214,14 +213,12 @@ export function CreatorStudioFeed({ creators, guidebooks, viewedCreatorId = curr
 
   return (
     <>
-      {isOwnCreator && (
-        <TopTabBar
-          mode="creator"
-          isInterestOpen={isInterestPanelOpen}
-          interestCount={interestedCreators.length}
-          onInterestToggle={() => setIsInterestPanelOpen((previous) => !previous)}
-        />
-      )}
+      <TopTabBar
+        mode={isOwnCreator ? 'creator' : 'cart'}
+        isInterestOpen={isInterestPanelOpen}
+        interestCount={interestedCreators.length}
+        onInterestToggle={() => setIsInterestPanelOpen((previous) => !previous)}
+      />
 
       <div className="creator-studio-content">
         <section className="creator-profile-summary">

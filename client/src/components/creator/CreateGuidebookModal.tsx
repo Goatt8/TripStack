@@ -15,6 +15,14 @@ export type CreateGuidebookDraft = {
   coverImageUrl: string;
   mapImageUrl: string;
   routePoints: GuidebookRoutePoint[];
+  blocks: CreateGuidebookBlockDraft[];
+  title: string;
+};
+
+export type CreateGuidebookBlockDraft = {
+  id: number;
+  imageName: string;
+  imageUrl: string;
   title: string;
   subtitle: string;
   content: string;
@@ -35,6 +43,17 @@ const initialRoutePoints: GuidebookRoutePoint[] = [
   { id: 5, pointOrder: 5, title: '', x: 72, y: 62 },
 ];
 
+function createEmptyDetailBlock(): CreateGuidebookBlockDraft {
+  return {
+    id: Date.now() + Math.floor(Math.random() * 1000),
+    imageName: '',
+    imageUrl: '',
+    title: '',
+    subtitle: '',
+    content: '',
+  };
+}
+
 function clampPercent(value: number) {
   return Math.min(100, Math.max(0, value));
 }
@@ -43,11 +62,8 @@ export function CreateGuidebookModal({ onClose, onCreate }: CreateGuidebookModal
   const [videoUrl, setVideoUrl] = useState('');
   const [selectedLocation, setSelectedLocation] = useState(locationOptions[1]);
   const [activePointId, setActivePointId] = useState<number | null>(null);
-  const [detailContent, setDetailContent] = useState('');
-  const [detailImageUrl, setDetailImageUrl] = useState('');
-  const [detailImageName, setDetailImageName] = useState('');
-  const [detailSubtitle, setDetailSubtitle] = useState('');
-  const [detailTitle, setDetailTitle] = useState('');
+  const [detailBlocks, setDetailBlocks] = useState<CreateGuidebookBlockDraft[]>([createEmptyDetailBlock()]);
+  const [validationMessage, setValidationMessage] = useState('');
   const [routePoints, setRoutePoints] = useState(initialRoutePoints);
 
   function addRoutePoint() {
@@ -72,7 +88,14 @@ export function CreateGuidebookModal({ onClose, onCreate }: CreateGuidebookModal
   }
 
   function readVideo() {
-    setDetailContent('영상에서 분석된 장소 설명이 이 영역에 임시로 들어갑니다. 이동 순서, 장소 분위기, 다시 확인해야 할 포인트를 바탕으로 인쇄용 가이드 문장을 구성합니다.');
+    setDetailBlocks((previous) => previous.map((block, index) => (
+      index === 0
+        ? {
+            ...block,
+            content: '영상에서 분석된 장소 설명이 이 영역에 임시로 들어갑니다. 이동 순서, 장소 분위기, 다시 확인해야 할 포인트를 바탕으로 인쇄용 가이드 문장을 구성합니다.',
+          }
+        : block
+    )));
   }
 
   function moveActivePoint(event: PointerEvent<HTMLDivElement>) {
@@ -87,29 +110,65 @@ export function CreateGuidebookModal({ onClose, onCreate }: CreateGuidebookModal
     setRoutePoints((previous) => previous.map((point) => (point.id === activePointId ? { ...point, x, y } : point)));
   }
 
-  function handleImageDrop(event: DragEvent<HTMLLabelElement>) {
+  function updateDetailBlock(blockId: number, updates: Partial<CreateGuidebookBlockDraft>) {
+    setValidationMessage('');
+    setDetailBlocks((previous) => previous.map((block) => (
+      block.id === blockId ? { ...block, ...updates } : block
+    )));
+  }
+
+  function addDetailBlock() {
+    setDetailBlocks((previous) => [...previous, createEmptyDetailBlock()]);
+  }
+
+  function removeDetailBlock(blockId: number) {
+    setDetailBlocks((previous) => previous.length === 1 ? previous : previous.filter((block) => block.id !== blockId));
+  }
+
+  function handleImageDrop(event: DragEvent<HTMLLabelElement>, blockId: number) {
     event.preventDefault();
     const file = event.dataTransfer.files[0];
 
     if (file) {
-      setDetailImageName(file.name);
-      setDetailImageUrl(URL.createObjectURL(file));
+      updateDetailBlock(blockId, {
+        imageName: file.name,
+        imageUrl: URL.createObjectURL(file),
+      });
     }
   }
 
-  function handleImageSelect(file?: File) {
-    setDetailImageName(file?.name ?? '');
-    setDetailImageUrl(file ? URL.createObjectURL(file) : '');
+  function handleImageSelect(blockId: number, file?: File) {
+    updateDetailBlock(blockId, {
+      imageName: file?.name ?? '',
+      imageUrl: file ? URL.createObjectURL(file) : '',
+    });
   }
 
   function createGuidebook() {
-    const title = detailTitle.trim() || `${selectedLocation.city} 새 가이드북`;
-    const subtitle = detailSubtitle.trim() || `${selectedLocation.city} · ${selectedLocation.country}`;
+    const hasEmptyRequiredField = detailBlocks.some((block) => (
+      block.title.trim().length === 0
+      || block.subtitle.trim().length === 0
+      || block.content.trim().length === 0
+    ));
+
+    if (hasEmptyRequiredField) {
+      setValidationMessage('제목과 내용을 입력해주세요');
+      return;
+    }
+
+    const normalizedBlocks = detailBlocks.map((block, index) => ({
+      ...block,
+      title: block.title.trim(),
+      subtitle: block.subtitle.trim(),
+      content: block.content.trim(),
+      imageUrl: block.imageUrl || `/images/guidebooks/user8-${Math.min(index + 1, 6)}.jpeg`,
+    }));
+    const title = normalizedBlocks[0]?.title || `${selectedLocation.city} 새 가이드북`;
 
     onCreate({
       country: selectedLocation.country,
       region: selectedLocation.city,
-      coverImageUrl: detailImageUrl || selectedLocation.mapImageUrl,
+      coverImageUrl: normalizedBlocks[0]?.imageUrl || '/images/guidebooks/user8-1.jpeg',
       mapImageUrl: selectedLocation.mapImageUrl,
       routePoints: routePoints.map((point, index) => ({
         ...point,
@@ -117,8 +176,7 @@ export function CreateGuidebookModal({ onClose, onCreate }: CreateGuidebookModal
         title: point.title.trim() || `위치 포인트 ${index + 1}`,
       })),
       title,
-      subtitle,
-      content: detailContent.trim() || '영상 분석을 통해 생성된 가이드북 상세 설명이 이 영역에 들어갑니다.',
+      blocks: normalizedBlocks,
     });
   }
 
@@ -253,53 +311,75 @@ export function CreateGuidebookModal({ onClose, onCreate }: CreateGuidebookModal
           </div>
 
           <section className="create-guidebook-detail-section">
-            <label
-              className="create-guidebook-image-drop"
-              onDragOver={(event) => event.preventDefault()}
-              onDrop={handleImageDrop}>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(event) => handleImageSelect(event.target.files?.[0])}
-              />
-              <strong>{detailImageName || '사진을 드래그하거나 클릭해서 첨부'}</strong>
-              <span>가이드북 상세 페이지에 들어갈 대표 장면</span>
-            </label>
+            <div className="create-guidebook-fieldset-title">
+              <strong>사진과 내용</strong>
+              <button type="button" onClick={addDetailBlock}>+</button>
+            </div>
 
-            <label className="create-guidebook-text-field">
-              <span>타이틀</span>
-              <input
-                type="text"
-                placeholder="장소 또는 장면 타이틀"
-                value={detailTitle}
-                onChange={(event) => setDetailTitle(event.target.value)}
-              />
-            </label>
+            {detailBlocks.map((block, index) => (
+              <article className="create-guidebook-detail-block" key={block.id}>
+                <div className="create-guidebook-detail-block-title">
+                  <span>Block {index + 1}</span>
+                  <button
+                    type="button"
+                    onClick={() => removeDetailBlock(block.id)}
+                    disabled={detailBlocks.length === 1}>
+                    삭제
+                  </button>
+                </div>
 
-            <label className="create-guidebook-text-field">
-              <span>서브타이틀 · 위치</span>
-              <input
-                type="text"
-                placeholder="지역, 위치, 이동 포인트"
-                value={detailSubtitle}
-                onChange={(event) => setDetailSubtitle(event.target.value)}
-              />
-            </label>
+                <label
+                  className="create-guidebook-image-drop"
+                  onDragOver={(event) => event.preventDefault()}
+                  onDrop={(event) => handleImageDrop(event, block.id)}>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(event) => handleImageSelect(block.id, event.target.files?.[0])}
+                  />
+                  <strong>{block.imageName || '사진을 드래그하거나 클릭해서 첨부'}</strong>
+                  <span>가이드북 상세 페이지에 들어갈 장면</span>
+                </label>
 
-            <label className="create-guidebook-text-field">
-              <span>내용</span>
-              <textarea
-                placeholder="읽기 버튼을 누르면 분석된 내용이 임시로 들어옵니다."
-                value={detailContent}
-                onChange={(event) => setDetailContent(event.target.value)}
-              />
-            </label>
+                <label className="create-guidebook-text-field">
+                  <span>타이틀</span>
+                  <input
+                    type="text"
+                    placeholder="장소 또는 장면 타이틀"
+                    value={block.title}
+                    onChange={(event) => updateDetailBlock(block.id, { title: event.target.value })}
+                  />
+                </label>
+
+                <label className="create-guidebook-text-field">
+                  <span>서브타이틀 · 위치</span>
+                  <input
+                    type="text"
+                    placeholder="지역, 위치, 이동 포인트"
+                    value={block.subtitle}
+                    onChange={(event) => updateDetailBlock(block.id, { subtitle: event.target.value })}
+                  />
+                </label>
+
+                <label className="create-guidebook-text-field">
+                  <span>내용</span>
+                  <textarea
+                    placeholder="읽기 버튼을 누르면 분석된 내용이 임시로 들어옵니다."
+                    value={block.content}
+                    onChange={(event) => updateDetailBlock(block.id, { content: event.target.value })}
+                  />
+                </label>
+              </article>
+            ))}
           </section>
         </div>
 
         <footer className="create-guidebook-footer">
-          <button type="button" onClick={onClose}>취소</button>
-          <button type="button" className="primary" onClick={createGuidebook}>생성</button>
+          {validationMessage && <p role="alert">{validationMessage}</p>}
+          <div>
+            <button type="button" onClick={onClose}>취소</button>
+            <button type="button" className="primary" onClick={createGuidebook}>생성</button>
+          </div>
         </footer>
       </section>
     </div>

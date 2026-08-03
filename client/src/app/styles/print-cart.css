@@ -1,3 +1,8 @@
+.cart-top-tabs {
+  width: min(132px, 100%);
+  margin-bottom: 24px;
+}
+
 .print-cart-view {
   width: min(1120px, calc(100% - 96px));
   margin: 24px auto 0;
@@ -258,8 +263,17 @@
     width: min(100% - 32px, 720px);
   }
 
+  .print-cart-heading {
+    margin-bottom: 18px;
+  }
+
+  .print-cart-heading h2 {
+    font-size: 23px;
+  }
+
   .print-cart-layout {
     grid-template-columns: 1fr;
+    gap: 28px;
   }
 
   .print-cart-summary {
@@ -267,16 +281,44 @@
   }
 
   .print-cart-row {
-    grid-template-columns: 22px 72px minmax(0, 1fr);
+    grid-template-columns: 20px 76px minmax(0, 1fr);
+    align-items: center;
+    column-gap: 14px;
+    row-gap: 12px;
+    padding: 16px 12px;
+  }
+
+  .print-cart-row > img {
+    width: 76px;
+  }
+
+  .print-cart-info {
+    gap: 5px;
+  }
+
+  .print-cart-info strong {
+    font-size: 13px;
+    line-height: 1.25;
+  }
+
+  .print-cart-info p,
+  .print-cart-info span {
+    font-size: 11px;
+    line-height: 1.35;
   }
 
   .print-cart-quantity,
   .print-cart-price,
   .print-cart-remove {
-    grid-column: 3;
+    grid-column: 2 / 4;
+    justify-self: stretch;
   }
 
   .print-cart-price {
     text-align: left;
+  }
+
+  .print-cart-remove {
+    text-align: center;
   }
 }

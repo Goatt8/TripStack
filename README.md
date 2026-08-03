@@ -1,71 +1,195 @@
 # TripStack
 
-TripStack is a travel-content guidebook publisher. Creators build region-based guidebooks from their travel records, and consumers choose trusted guides, customize the print layout, and create book-production orders.
+## 1. 서비스 소개
 
-## Target Users
+TripStack은 여행 크리에이터의 영상·사진 콘텐츠를 인쇄 가능한 여행 가이드북으로 정리하고, 사용자가 마음에 드는 가이드북을 담아 인쇄 주문 흐름까지 확인할 수 있는 콘텐츠 서비스입니다.
 
-- Creators: travel creators, YouTubers, and writers who want to package regional travel content as guidebooks.
-- Consumers: travelers who want a trusted, printable guidebook instead of scattered posts and videos.
+### 타겟 사용자
 
-## Features
+- 여행 전 여러 영상과 게시물을 저장해두지만, 실제 여행 중에는 다시 찾기 어려운 사용자
+- 본인의 여행 콘텐츠를 지역별 가이드북 형태로 재구성하고 싶은 여행 크리에이터
+- 모바일에서 콘텐츠를 탐색하고, 최종적으로 종이 가이드북처럼 보관할 수 있는 흐름을 원하는 사용자
 
-- Creator / Consumer entry flow
-- Creator profile, follower count, trust score, and regional guidebook ranking
-- Region filter for consumers
-- Ranked guidebook discovery by print count and creator trust
-- Guidebook content blocks for place-by-place flow management
-- Layout customization before print order
-- Order status flow: `pending -> processing -> completed`
-- Seed data included, no login required
+현재 데모 계정은 `수박이`로 고정되어 있으며, 별도 로그인 없이 주요 흐름을 확인할 수 있습니다.
 
-## Run With Docker
+### 주요 기능
+
+- 메인 홈에서 추천 가이드북, 카테고리별 가이드북, 인기 크리에이터 조회
+- 국가/도시 기준 가이드북 검색
+- 가이드북 상세뷰에서 썸네일, 크리에이터 정보, 이동 지도, 상세 이미지/설명 확인
+- 관심 크리에이터 추가/해제
+- 상대 크리에이터 프로필과 해당 크리에이터의 가이드북 조회
+- 내 크리에이터 화면에서 가이드북 생성, 삭제, 숨기기 흐름 확인
+- 지도 위 위치 포인트 배치와 사진+텍스트 블록 기반 가이드북 생성
+- 담아둔 가이드북을 인쇄 장바구니에서 조회, 수량 변경, 제거, 주문 요약 확인
+- PC/모바일 반응형 UI
+
+## 2. 실행 방법 (Docker)
+
+저장소 클론 후 프로젝트 루트에서 실행합니다.
 
 ```bash
 git clone <repo-url>
 cd TripStack
-cp .env.example .env
-docker-compose up --build
+docker compose up --build
 ```
 
-Open:
+접속 주소:
 
 ```txt
 http://localhost:3000
 ```
 
-API:
+API 확인:
 
 ```txt
-http://localhost:4000/api
+http://localhost:4000/api/health
 ```
 
-To change ports, edit `.env`:
+포트 충돌이 있으면 환경변수로 포트를 변경할 수 있습니다.
+
+```bash
+WEB_PORT=3001 API_PORT=4001 docker compose up --build
+```
+
+변경 후 접속 주소:
 
 ```txt
-WEB_PORT=3001
-API_PORT=4001
+http://localhost:3001
+http://localhost:4001/api/health
 ```
 
-## Completed Level
+로컬 개발 실행이 필요한 경우:
 
-- Lv1: Travel guidebook content can be listed, filtered by region, and viewed through content blocks.
-- Lv2: Consumers can create print orders with a selected layout and track order statuses.
-- Lv3: The UI is designed around two users: creators who need profile/ranking feedback, and consumers who need trust signals before printing.
+```bash
+cd server
+npm install
+npm run dev
+```
 
-## UX Decisions
+```bash
+cd client
+npm install
+npm run dev
+```
 
-TripStack starts with role selection because creator and consumer goals are different. Creators care about profile credibility, regional ranking, and which guidebooks are consumed most. Consumers first choose a region, then compare guidebooks by ranking, print count, follower count, and trust score. Order statuses use plain language so users know whether a guidebook is just requested, being prepared, or completed.
+## 3. 완성한 레벨
 
-## Tech Stack
+### Lv1. 서비스 구현
+
+TripStack의 핵심 콘텐츠인 여행 가이드북을 조회하고 상세 내용을 확인할 수 있습니다. 크리에이터 목록, 가이드북 목록, 카테고리별 추천, 검색, 상세 모달, 상대 크리에이터 프로필 화면을 구현했습니다.
+
+### Lv2. 자체 주문 기능
+
+사용자가 가이드북을 인쇄 장바구니에 담고, 수량을 조정하고, 제거하고, 주문 요약을 확인할 수 있습니다. 장바구니 데이터는 `print_cart_items` 테이블에 저장되며 Express API를 통해 조회/추가/수정/삭제됩니다.
+
+### Lv3. 사용자 경험(UI/UX) 설계와 구현
+
+사용자가 메인 탐색에서 상세 확인, 담기, 인쇄 장바구니, 크리에이터 화면, 생성 모달로 이어지는 흐름을 끊기지 않게 사용할 수 있도록 상단 공용 탭바와 반응형 UI를 구성했습니다. 모바일에서도 검색바, 가이드북 카드, 장바구니 화면이 깨지지 않도록 media query로 레이아웃을 분기했습니다.
+
+## 4. 사용자 경험(UI/UX) 설계
+
+### 타겟 상황
+
+TripStack의 소비자는 여행 전에 콘텐츠를 저장해두지만, 여행 중에는 영상 전체를 다시 보거나 SNS 저장 목록을 뒤지는 것이 번거로운 사용자입니다. 주 사용 환경은 모바일이지만, 여행 계획을 정리하거나 인쇄 주문을 준비할 때는 PC도 함께 사용할 수 있다고 가정했습니다.
+
+### 화면과 흐름 판단
+
+- 첫 화면은 별도 랜딩 페이지가 아니라 바로 가이드북 피드로 구성했습니다. 사용자가 들어오자마자 콘텐츠를 탐색할 수 있게 하기 위함입니다.
+- 상단 탭바는 홈, 내 화면, 검색 또는 관심 목록으로 단순화했습니다. 화면을 이동해도 홈과 내 화면으로 돌아갈 수 있어 흐름이 끊기지 않습니다.
+- 검색은 PC에서는 탭바 옆으로 펼쳐지고, 모바일에서는 탭바 아래로 내려오게 했습니다. 좁은 화면에서 입력 영역이 잘리지 않도록 하기 위한 판단입니다.
+- 가이드북 상세는 우측에서 들어오는 모달로 구성했습니다. 메인 피드의 탐색 맥락을 유지하면서 상세 정보를 확인할 수 있게 하기 위함입니다.
+- 인쇄 장바구니는 별도 페이지로 분리했습니다. 수량 조정과 주문 요약은 사용자가 집중해서 확인해야 하는 단계라고 판단했습니다.
+- 가이드북 생성은 지도 위치 포인트와 사진+텍스트 블록을 순서대로 입력하는 구조로 만들었습니다. 자유도가 너무 높은 편집기는 과제 범위에서 복잡도가 커지기 때문에, 노션처럼 위에서 아래로 쌓는 구조를 선택했습니다.
+
+### 의도적으로 넣지 않은 것
+
+- 로그인/회원가입은 구현하지 않았습니다. 과제 데모에서는 사용자 인증보다 콘텐츠 생성·조회·주문 흐름이 더 중요하다고 판단해 `수박이` 고정 계정으로 구성했습니다.
+- 실제 결제, 배송, 인쇄 API 호출은 구현하지 않았습니다. 과제 조건에 맞춰 주문 흐름과 데이터 저장까지만 구현했습니다.
+- 외부 지도 API는 사용하지 않았습니다. 외부 의존 없이 동작해야 하므로 지도 이미지를 더미 이미지로 두고, 그 위에 위치 포인트와 이동 라인을 표시했습니다.
+
+## 5. 기술 스택 및 아키텍처
+
+### 기술 스택
 
 - Frontend: Next.js, React, TypeScript
 - Backend: Express, TypeScript
-- DB: SQLite
+- Database: SQLite, better-sqlite3
 - Runtime: Docker Compose
 
-SQLite was selected for assignment stability. It allows reviewers to run the app with seed data immediately through Docker, while the API layer can later be moved to MySQL or PostgreSQL.
+### 선택 이유
 
+- Next.js는 파일 기반 라우팅과 React 컴포넌트 구조를 활용해 메인 화면, 크리에이터 화면, 인쇄 장바구니 화면을 빠르게 나누기에 적합했습니다.
+- React는 상세 모달, 검색 탭, 장바구니 수량 변경처럼 상태가 필요한 UI를 컴포넌트 단위로 관리하기 좋았습니다.
+- Express는 가이드북, 상세 블록, 장바구니, 주문 API를 단순한 REST 구조로 구현하기에 적합했습니다.
+- SQLite는 별도 DB 서버 설치 없이 Docker 실행 직후 더미데이터와 CRUD 흐름을 확인할 수 있어 과제 환경에 적합했습니다.
+- Docker Compose는 심사자가 프론트엔드와 백엔드를 한 번에 실행할 수 있도록 하기 위해 사용했습니다.
 
-## AI Tool Usage
+### 주요 디렉터리 구조
 
-AI was used to brainstorm service scope, split the project into frontend/backend/database layers, draft seed data, and generate an initial Docker-based scaffold. The implementation was reviewed around the assignment requirements: independent execution, clear user flow, and explainable UI/UX decisions.
+```txt
+TripStack
+├── client
+│   └── src
+│       ├── app
+│       ├── components
+│       ├── features
+│       ├── services
+│       └── types
+├── server
+│   └── src
+│       ├── db.ts
+│       └── server.ts
+├── data
+│   └── tripstack.db
+└── docker-compose.yml
+```
+
+### 주요 데이터 구조
+
+- `users`: 크리에이터/사용자 정보
+- `guidebooks`: 가이드북 기본 정보
+- `guidebook_route_points`: 지도 위 이동 포인트
+- `guidebook_blocks`: 상세 이미지와 설명 블록
+- `print_cart_items`: 사용자가 담아둔 인쇄 장바구니
+- `orders`: 인쇄 주문 흐름용 주문 데이터
+
+더미데이터와 이미지는 프로젝트 내부에 포함되어 있으며 외부 데이터 API를 호출하지 않습니다.
+
+## 6. AI 도구 사용 내역
+
+### Codex
+
+- 전체 프로젝트 구조와 화면 컴포넌트 분리 방향을 잡는 데 사용했습니다.
+- Next.js 라우팅, Express API, SQLite 모델링, 장바구니 CRUD, 반응형 UI 수정 과정에서 코드 작성과 오류 점검에 활용했습니다.
+- 과제 요구사항과 현재 구현 상태를 비교하며 부족한 기능과 README 구성을 점검했습니다.
+
+### Gemini
+
+- 더미데이터로 사용할 크리에이터 이미지, 가이드북 썸네일, 상세 이미지 생성에 활용했습니다.
+- 여러 분위기의 여행 콘텐츠 샘플을 빠르게 만들어 실제 화면에 적용해보는 방식으로 사용했습니다.
+
+### 사용 중 겪은 문제
+
+- 초기에 AI가 제안한 구조가 실제 서비스 흐름과 맞지 않아 컴포넌트 이름과 화면 역할을 여러 차례 정리했습니다.
+- 가이드북 생성 시 맵 이미지가 썸네일/상세 이미지로 중복 저장되는 문제가 있어 `mapImageUrl`과 `guidebook_blocks`를 분리했습니다.
+- 장바구니를 처음에는 localStorage로만 처리했지만, 비즈니스 로직을 보여주기 위해 SQLite 기반 `print_cart_items` 테이블과 API로 옮겼습니다.
+
+## 7. 설계 의도
+
+### 아이디어 선택 이유
+
+여행 콘텐츠는 영상, 이미지, SNS 저장 목록처럼 흩어져 소비되는 경우가 많습니다. 하지만 실제 여행 중에는 짧은 시간 안에 장소, 이동 순서, 핵심 정보를 다시 확인해야 합니다. TripStack은 크리에이터 콘텐츠를 지역별 가이드북으로 재구성하고, 사용자가 필요할 때 인쇄 가능한 형태로 담을 수 있는 서비스로 기획했습니다.
+
+### 사업적 가능성
+
+TripStack은 여행 크리에이터에게는 콘텐츠를 재활용해 가이드북 상품으로 확장할 수 있는 도구가 되고, 소비자에게는 신뢰하는 크리에이터의 여행 루트를 실물 가이드북처럼 보관할 수 있는 경험을 제공합니다. 향후 실제 인쇄 API와 연결하면 콘텐츠 커머스와 굿즈 제작 흐름으로 확장할 수 있습니다.
+
+### 더 시간이 있었다면 추가할 기능
+
+- 실제 주문 생성 후 `pending → processing → completed` 상태를 관리하는 주문 목록 화면
+- 운영자용 주문 관리 페이지
+- 가이드북 생성 시 영상 자막을 분석해 장소와 설명을 자동 추천하는 AI 기능
+- 지도 이미지 위 포인트 저장값을 기반으로 인쇄용 PDF 미리보기 생성
+- 로그인과 사용자별 관심 목록/장바구니 분리
+- CSV 또는 JSON 주문 데이터 내보내기
