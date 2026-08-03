@@ -6,6 +6,21 @@ import { guidebookKeywordMap, layouts } from '@/features/guidebook/constants';
 import { guidebookService } from '@/services/guidebookService';
 import type { Guidebook, GuidebookBlock, Order, OrderStatus, User } from '@/types';
 
+function uniqueBy<T>(items: T[], getKey: (item: T) => string) {
+  const seenKeys = new Set<string>();
+
+  return items.filter((item) => {
+    const key = getKey(item);
+
+    if (seenKeys.has(key)) {
+      return false;
+    }
+
+    seenKeys.add(key);
+    return true;
+  });
+}
+
 export function useGuidebookCatalog() {
   const [creators, setCreators] = useState<User[]>([]);
   const [guidebooks, setGuidebooks] = useState<Guidebook[]>([]);
@@ -27,7 +42,7 @@ export function useGuidebookCatalog() {
           guidebookService.getCreators(),
           guidebookService.getOrders(),
         ]);
-        setCreators(creatorData);
+        setCreators(uniqueBy(creatorData, (creator) => `${creator.username}-${creator.avatarUrl}`));
         setOrders(orderData);
       } catch {
         setError('초기 데이터를 불러오지 못했습니다. API 서버 상태를 확인해 주세요.');
@@ -44,13 +59,20 @@ export function useGuidebookCatalog() {
       try {
         setError('');
         const data = await guidebookService.getGuidebooks();
-        setGuidebooks(data);
+        const uniqueGuidebooks = uniqueBy(data, (guidebook) => [
+          guidebook.creatorId,
+          guidebook.title,
+          guidebook.country,
+          guidebook.region,
+          guidebook.coverImageUrl,
+        ].join('|'));
+        setGuidebooks(uniqueGuidebooks);
         setSelectedGuidebook((previous) => {
-          if (previous && data.some((item) => item.id === previous.id)) {
+          if (previous && uniqueGuidebooks.some((item) => item.id === previous.id)) {
             return previous;
           }
 
-          return data[0] ?? null;
+          return uniqueGuidebooks[0] ?? null;
         });
       } catch {
         setError('가이드북 목록을 불러오지 못했습니다.');

@@ -1,7 +1,9 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
 import { useRef, useState } from 'react';
-import type { MouseEvent, PointerEvent } from 'react';
+import type { PointerEvent } from 'react';
+import { currentAccount } from '@/features/account/currentAccount';
 import type { User } from '@/types';
 
 type CreatorRailProps = {
@@ -17,6 +19,7 @@ function formatCompactCount(count: number) {
 }
 
 export function CreatorRail({ creators }: CreatorRailProps) {
+  const router = useRouter();
   const railRef = useRef<HTMLDivElement>(null);
   const dragState = useRef({
     isActive: false,
@@ -43,8 +46,6 @@ export function CreatorRail({ creators }: CreatorRailProps) {
       scrollLeft: rail.scrollLeft,
       startX: event.clientX,
     };
-    rail.setPointerCapture(event.pointerId);
-    setIsDragging(true);
   }
 
   function handlePointerMove(event: PointerEvent<HTMLDivElement>) {
@@ -56,8 +57,9 @@ export function CreatorRail({ creators }: CreatorRailProps) {
 
     const distance = event.clientX - dragState.current.startX;
 
-    if (Math.abs(distance) > 4) {
+    if (Math.abs(distance) > 12) {
       dragState.current.isMoved = true;
+      setIsDragging(true);
     }
 
     rail.scrollLeft = dragState.current.scrollLeft - distance;
@@ -66,22 +68,17 @@ export function CreatorRail({ creators }: CreatorRailProps) {
   function handlePointerEnd(event: PointerEvent<HTMLDivElement>) {
     const rail = railRef.current;
 
-    if (rail?.hasPointerCapture(event.pointerId)) {
-      rail.releasePointerCapture(event.pointerId);
-    }
-
     dragState.current.isActive = false;
     setIsDragging(false);
   }
 
-  function handleClickCapture(event: MouseEvent<HTMLDivElement>) {
-    if (!dragState.current.isMoved) {
+  function openCreator(creator: User) {
+    if (dragState.current.isMoved) {
       return;
     }
 
-    event.preventDefault();
-    event.stopPropagation();
-    dragState.current.isMoved = false;
+    const href = creator.id === currentAccount.creatorId ? '/creator' : `/creator/${creator.id}`;
+    router.push(href);
   }
 
   return (
@@ -89,13 +86,12 @@ export function CreatorRail({ creators }: CreatorRailProps) {
       <div
         className={isDragging ? 'creator-rail dragging' : 'creator-rail'}
         ref={railRef}
-        onClickCapture={handleClickCapture}
         onPointerCancel={handlePointerEnd}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerEnd}>
         {creators.map((creator) => (
-          <button className="creator-bubble" key={creator.id} type="button">
+          <button className="creator-bubble" key={creator.id} type="button" onClick={() => openCreator(creator)}>
             <img src={creator.avatarUrl} alt={`${creator.username} profile`} />
             <strong>{creator.username}</strong>
             <span>{formatCompactCount(creator.followerCount)}</span>

@@ -100,9 +100,12 @@
 .keyword-search-bar .text-segment {
   display: flex;
   align-items: center;
+  gap: 8px;
 }
 
 .keyword-search-bar .text-segment input {
+  flex: 1;
+  width: auto;
   margin-top: 0;
 }
 
@@ -110,12 +113,24 @@
   color: #98a2b3;
 }
 
-.trip-search-segment b {
-  float: right;
-  margin-top: -20px;
+.search-clear-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 24px;
+  width: 24px;
+  height: 24px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
   color: #344054;
-  font-size: 25px;
+  font-size: 24px;
+  font-weight: 900;
   line-height: 1;
+}
+
+.search-clear-button:hover {
+  background: #eef2f7;
 }
 
 .keyword-placeholder-segment {
@@ -226,6 +241,85 @@
   left: auto;
   width: min(520px, calc(100% - 132px));
   padding: 18px;
+}
+
+.location-popover {
+  width: min(420px, calc(100% - 132px));
+  max-height: 360px;
+  overflow-y: auto;
+}
+
+.location-category-list {
+  display: grid;
+  gap: 12px;
+}
+
+.location-country-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.location-country-tabs button {
+  border: 1px solid #e4e7ec;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #667085;
+  padding: 8px 11px;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.location-country-tabs button.selected,
+.location-country-tabs button:hover {
+  border-color: #101828;
+  background: #101828;
+  color: #ffffff;
+}
+
+.location-category-group {
+  display: grid;
+  gap: 8px;
+}
+
+.location-category-group > strong {
+  color: #101828;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.location-category-group > div {
+  display: grid;
+  gap: 8px;
+}
+
+.location-category-group > div button {
+  display: grid;
+  gap: 3px;
+  width: 100%;
+  text-align: left;
+  border: 1px solid #e4e7ec;
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 10px 12px;
+}
+
+.location-category-group > div button:hover {
+  border-color: #101828;
+  background: #f8fafc;
+}
+
+.location-category-group strong {
+  color: #101828;
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.location-category-group span {
+  color: #667085;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.35;
 }
 
 .keyword-option-grid {

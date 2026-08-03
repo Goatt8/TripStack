@@ -195,6 +195,7 @@ export function ConsumerGuidebookFeed(props: ConsumerGuidebookFeedProps) {
           creator={selectedCreator}
           guidebook={props.selectedGuidebook}
           onClose={() => setIsPrintDetailOpen(false)}
+          showBasketAction={props.selectedGuidebook.creatorId !== currentAccount.creatorId}
         />
       )}
     </>

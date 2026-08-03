@@ -19,11 +19,22 @@ export type Guidebook = {
   country: string;
   region: string;
   coverImageUrl: string;
+  mapImageUrl: string;
   printCount: number;
   rankInRegion: number;
   followerCount: number;
   trustScore: number;
   blockCount: number;
+  routePoints: GuidebookRoutePoint[];
+};
+
+export type GuidebookRoutePoint = {
+  id: number;
+  guidebookId?: number;
+  pointOrder: number;
+  title: string;
+  x: number;
+  y: number;
 };
 
 export type GuidebookBlock = {

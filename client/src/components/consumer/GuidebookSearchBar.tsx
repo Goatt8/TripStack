@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 
+import { locationCategories } from '@/features/guidebook/constants';
 import type { Guidebook, SearchKeywordOption } from '@/types';
 
 type GuidebookSearchBarProps = {
@@ -10,22 +11,6 @@ type GuidebookSearchBarProps = {
   searchQuery: string;
   selectedKeyword: string;
   onSearchSubmit: (query: string, keyword: string) => void;
-};
-
-const regionLabels: Record<string, string> = {
-  seoul: '서울',
-  gyeongju: '경주',
-  jeju: '제주',
-  roma: '로마',
-  bangkok: '방콕',
-};
-
-const countryLabels: Record<string, string> = {
-  seoul: '대한민국',
-  gyeongju: '대한민국',
-  jeju: '대한민국',
-  roma: '이탈리아',
-  bangkok: '태국',
 };
 
 function SearchIcon() {
@@ -48,6 +33,7 @@ export function GuidebookSearchBar({
   const [draftQuery, setDraftQuery] = useState(searchQuery);
   const [draftKeyword, setDraftKeyword] = useState(selectedKeyword);
   const [activePanel, setActivePanel] = useState<'text' | 'keyword' | null>(null);
+  const [selectedCountryId, setSelectedCountryId] = useState(locationCategories[0]?.id ?? '');
 
   useEffect(() => {
     setDraftQuery(searchQuery);
@@ -68,13 +54,14 @@ export function GuidebookSearchBar({
     return () => document.removeEventListener('mousedown', closeOnOutsideClick);
   }, []);
 
-  const selectedKeywordLabel = searchKeywords.find((keyword) => keyword.id === draftKeyword)?.label ?? '키워드 검색';
+  const selectedKeywordLabel = searchKeywords.find((keyword) => keyword.id === draftKeyword)?.label ?? '카테고리 검색';
+  const selectedCountry = locationCategories.find((country) => country.id === selectedCountryId) ?? locationCategories[0];
 
   const suggestions = useMemo(() => {
     const keyword = draftQuery.trim().toLowerCase();
     const candidates = guidebooks.flatMap((guidebook) => {
-      const city = regionLabels[guidebook.region] ?? guidebook.region;
-      const country = countryLabels[guidebook.region] ?? '';
+      const city = guidebook.region;
+      const country = guidebook.country;
 
       return [
         {
@@ -116,6 +103,13 @@ export function GuidebookSearchBar({
     setActivePanel('text');
   }
 
+  function selectLocation(query: string) {
+    setDraftQuery(query);
+    setDraftKeyword('all');
+    setActivePanel(null);
+    onSearchSubmit(query, 'all');
+  }
+
   return (
     <section className="search-hero compact-search-hero">
       <div className="search-copy centered-copy">
@@ -134,7 +128,11 @@ export function GuidebookSearchBar({
               onFocus={() => setActivePanel('text')}
               placeholder="도시, 국가 검색"
             />
-            {draftQuery && <b onClick={clearQuery}>×</b>}
+            {draftQuery && (
+              <button className="search-clear-button" type="button" aria-label="검색어 지우기" onClick={clearQuery}>
+                ×
+              </button>
+            )}
           </label>
 
           <button
@@ -176,20 +174,35 @@ export function GuidebookSearchBar({
         )}
 
         {activePanel === 'keyword' && (
-          <div className="search-popover keyword-popover">
-            <div className="keyword-option-grid">
-              {searchKeywords.map((keyword) => (
-                <button
-                  className={draftKeyword === keyword.id ? 'selected' : ''}
-                  key={keyword.id}
-                  type="button"
-                  onClick={() => {
-                    setDraftKeyword(keyword.id);
-                    setActivePanel(null);
-                  }}>
-                  {keyword.label}
-                </button>
-              ))}
+          <div className="search-popover keyword-popover location-popover">
+            <div className="location-category-list">
+              <div className="location-country-tabs" role="tablist" aria-label="국가 선택">
+                {locationCategories.map((country) => (
+                  <button
+                    className={selectedCountry?.id === country.id ? 'selected' : ''}
+                    key={country.id}
+                    type="button"
+                    role="tab"
+                    aria-selected={selectedCountry?.id === country.id}
+                    onClick={() => setSelectedCountryId(country.id)}>
+                    {country.label}
+                  </button>
+                ))}
+              </div>
+
+              {selectedCountry && (
+                <section className="location-category-group">
+                  <strong>{selectedCountry.label}</strong>
+                  <div>
+                    {selectedCountry.cities.map((city) => (
+                      <button key={city.id} type="button" onClick={() => selectLocation(city.label)}>
+                        <strong>{city.label}</strong>
+                        <span>{city.description}</span>
+                      </button>
+                    ))}
+                  </div>
+                </section>
+              )}
             </div>
           </div>
         )}

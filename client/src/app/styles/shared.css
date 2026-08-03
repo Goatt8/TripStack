@@ -15,8 +15,7 @@
   font-weight: 900;
 }
 
-.section-card,
-.metric-card {
+.section-card {
   border: 1px solid #dfe4ec;
   border-radius: 8px;
   background: #ffffff;
@@ -32,24 +31,6 @@
   grid-template-columns: repeat(3, 1fr);
   gap: 12px;
   margin-bottom: 16px;
-}
-
-.metric-card span {
-  color: #667085;
-  font-size: 12px;
-  font-weight: 900;
-  text-transform: uppercase;
-}
-
-.metric-card strong {
-  display: block;
-  margin-top: 8px;
-  font-size: 30px;
-}
-
-.metric-row {
-  display: flex;
-  gap: 10px;
 }
 
 .rank-badge {
@@ -97,10 +78,5 @@
 @media (max-width: 820px) {
   .summary-grid {
     grid-template-columns: 1fr;
-  }
-
-  .metric-row {
-    width: 100%;
-    flex-direction: column;
   }
 }

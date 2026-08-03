@@ -67,6 +67,7 @@
 
 .consumer-feed-tabs.search-open .consumer-feed-search {
   flex-basis: 470px;
+  overflow: visible;
   opacity: 1;
 }
 
@@ -93,7 +94,7 @@
 }
 
 .consumer-feed-search .trip-search-segment input {
-  width: calc(100% - 16px);
+  width: auto;
   font-size: 13px;
 }
 
@@ -445,7 +446,9 @@
   pointer-events: none;
 }
 
+.print-detail-basket,
 .print-detail-print,
+.print-detail-more,
 .print-detail-close {
   pointer-events: auto;
   justify-self: end;
@@ -459,10 +462,82 @@
   box-shadow: 0 10px 24px rgb(16 24 40 / 10%);
 }
 
+.print-detail-basket,
 .print-detail-print {
   height: 36px;
   padding: 0 14px;
   font-size: 12px;
+}
+
+.print-detail-basket {
+  background: #ffffff;
+  color: #101828;
+}
+
+.print-detail-basket.basketed {
+  background: #101828;
+  color: #ffffff;
+}
+
+.print-detail-manage {
+  position: relative;
+  pointer-events: auto;
+}
+
+.print-detail-more {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  letter-spacing: 0;
+  line-height: 1;
+}
+
+.print-detail-more::before {
+  content: "...";
+  display: block;
+  font-size: 18px;
+  line-height: 0;
+  transform: translateY(-4px);
+}
+
+.print-detail-manage-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 4;
+  display: grid;
+  gap: 4px;
+  width: 132px;
+  border: 1px solid #e4e7ec;
+  border-radius: 10px;
+  background: #ffffff;
+  box-shadow: 0 16px 36px rgb(16 24 40 / 16%);
+  padding: 6px;
+}
+
+.print-detail-manage-menu button {
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #101828;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 800;
+  padding: 10px 12px;
+  text-align: left;
+}
+
+.print-detail-manage-menu button:hover {
+  background: #f2f4f7;
+}
+
+.print-detail-manage-menu button:disabled {
+  color: #98a2b3;
+  cursor: default;
+}
+
+.print-detail-manage-menu button:disabled:hover {
+  background: transparent;
 }
 
 .print-detail-close {
@@ -472,7 +547,9 @@
   line-height: 1;
 }
 
+.print-detail-basket:hover,
 .print-detail-print:hover,
+.print-detail-more:hover,
 .print-detail-close:hover {
   border-color: #101828;
 }
@@ -521,6 +598,97 @@
   color: #667085;
   font-size: 13px;
   font-weight: 800;
+}
+
+.print-detail-route {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+}
+
+.print-detail-route > div:first-child {
+  display: grid;
+  justify-items: center;
+  gap: 5px;
+  text-align: center;
+}
+
+.print-detail-route span {
+  color: #667085;
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.print-detail-route h3 {
+  margin: 0;
+  color: #101828;
+  font-size: 20px;
+  line-height: 1.2;
+}
+
+.print-detail-route-map {
+  position: relative;
+  overflow: hidden;
+  width: min(500px, 100%);
+  border: 1px solid #e4e7ec;
+  border-radius: 8px;
+  background: #f2f4f7;
+  aspect-ratio: 4 / 3;
+}
+
+.print-detail-route-map img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.print-detail-route-line {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  color: #2563eb;
+  filter: drop-shadow(0 1px 2px rgb(16 24 40 / 18%));
+  pointer-events: none;
+}
+
+.print-detail-route-point {
+  position: absolute;
+  z-index: 2;
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  min-width: 24px;
+  transform: translate(-50%, -50%);
+}
+
+.print-detail-route-point strong {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border: 2px solid #ffffff;
+  border-radius: 999px;
+  background: #2563eb;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 900;
+  box-shadow: 0 8px 18px rgb(16 24 40 / 22%);
+}
+
+.print-detail-route-point span {
+  max-width: 92px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 90%);
+  color: #101828;
+  padding: 4px 7px;
+  font-size: 10px;
+  text-overflow: ellipsis;
+  text-transform: none;
+  white-space: nowrap;
+  box-shadow: 0 6px 14px rgb(16 24 40 / 14%);
 }
 
 .print-detail-blocks {
@@ -622,10 +790,6 @@
   scroll-snap-type: none;
 }
 
-.creator-rail.dragging .creator-bubble {
-  pointer-events: none;
-}
-
 .creator-bubble {
   flex: 0 0 72px;
   display: grid;
@@ -636,6 +800,7 @@
   border: 0;
   background: transparent;
   color: #101828;
+  cursor: pointer;
   padding: 0;
 }
 

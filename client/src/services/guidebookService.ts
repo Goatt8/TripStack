@@ -1,5 +1,25 @@
 import { request } from '@/services/apiClient';
-import type { Guidebook, GuidebookBlock, Order, User } from '@/types';
+import type { Guidebook, GuidebookBlock, GuidebookRoutePoint, Order, User } from '@/types';
+
+export type CreateGuidebookPayload = {
+  creatorId: number;
+  title: string;
+  country: string;
+  region: string;
+  coverImageUrl: string;
+  mapImageUrl: string;
+  routePoints: Array<Pick<GuidebookRoutePoint, 'pointOrder' | 'title' | 'x' | 'y'>>;
+  block: {
+    placeName: string;
+    content: string;
+    imageUrl: string;
+  };
+};
+
+export type CreateGuidebookResponse = {
+  guidebook: Guidebook;
+  blocks: GuidebookBlock[];
+};
 
 export const guidebookService = {
   getCreators() {
@@ -11,6 +31,12 @@ export const guidebookService = {
   },
   getGuidebookBlocks(guidebookId: number) {
     return request<GuidebookBlock[]>(`/guidebooks/${guidebookId}/blocks`);
+  },
+  createGuidebook(payload: CreateGuidebookPayload) {
+    return request<CreateGuidebookResponse>('/guidebooks', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
   },
   getOrders() {
     return request<Order[]>('/orders');
