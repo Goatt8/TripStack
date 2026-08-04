@@ -79,10 +79,9 @@ export function GuidebookPrintDetailModal({
               type="button"
               disabled={isBasketUpdating}
               onClick={() => void toggleBasket()}>
-              {isBasketed ? '내 가이드북에서 빼기' : '내 가이드북에 담기'}
+              {isBasketed ? '인쇄목록에서 빼기' : '인쇄목록에 담기'}
             </button>
           )}
-          <button className="print-detail-print" type="button">인쇄하기</button>
           {canManage && (
             <div className="print-detail-manage">
               <button

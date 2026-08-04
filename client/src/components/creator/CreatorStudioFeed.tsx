@@ -264,7 +264,7 @@ export function CreatorStudioFeed({ creators, guidebooks, viewedCreatorId = curr
                   role="tab"
                   aria-selected={activeTab === 'saved'}
                   onClick={() => setActiveTab('saved')}>
-                  담아둔 가이드북
+                  인쇄목록 가이드북
                 </button>
               </div>
 

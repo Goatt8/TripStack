@@ -487,7 +487,6 @@
 }
 
 .print-detail-basket,
-.print-detail-print,
 .print-detail-more,
 .print-detail-close {
   pointer-events: auto;
@@ -503,7 +502,7 @@
 }
 
 .print-detail-basket,
-.print-detail-print {
+.print-detail-basket {
   height: 36px;
   padding: 0 14px;
   font-size: 12px;
@@ -588,7 +587,6 @@
 }
 
 .print-detail-basket:hover,
-.print-detail-print:hover,
 .print-detail-more:hover,
 .print-detail-close:hover {
   border-color: #101828;
