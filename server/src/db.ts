@@ -281,7 +281,7 @@ function seedDatabase() {
         guidebookId: guidebookIds[guidebookIndex],
         stepOrder,
         placeName: `${guidebook.title} #${stepOrder}`,
-        content: '영상에서 눈에 띄는 장면을 캡처해 장소 분위기, 이동 순서, 다시 확인할 포인트를 한 장씩 정리했습니다.',
+        content: '이 여행지는 현지의 분위기를 가장 잘 느낄 수 있는 대표적인 여행 스팟입니다. 주변 골목과 상점도 함께 둘러보며 여유롭게 이동하는 것을 추천합니다. 방문 시간에 따라 풍경이 달라지므로 오전과 해 질 무렵 모두 색다른 매력을 경험할 수 있습니다.',
         imageUrl: `/images/guidebooks/user${guidebook.creatorId}-${stepOrder}.jpeg`,
       });
     }

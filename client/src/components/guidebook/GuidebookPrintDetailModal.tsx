@@ -2,11 +2,7 @@
 
 import { useEffect, useState } from 'react';
 
-import {
-  addBasketGuidebookId,
-  readBasketGuidebookIds,
-  removeBasketGuidebookId,
-} from '@/features/basket/guidebookBasket';
+import { usePrintCartStore } from '@/features/basket/printCartStore';
 import type { Guidebook, GuidebookBlock, User } from '@/types';
 
 type GuidebookPrintDetailModalProps = {
@@ -41,26 +37,27 @@ export function GuidebookPrintDetailModal({
   showBasketAction = false,
 }: GuidebookPrintDetailModalProps) {
   const [isManageMenuOpen, setIsManageMenuOpen] = useState(false);
-  const [isBasketed, setIsBasketed] = useState(false);
   const [isBasketUpdating, setIsBasketUpdating] = useState(false);
+  const addGuidebook = usePrintCartStore((state) => state.addGuidebook);
+  const guidebookIds = usePrintCartStore((state) => state.guidebookIds);
+  const loadCart = usePrintCartStore((state) => state.loadCart);
+  const removeGuidebook = usePrintCartStore((state) => state.removeGuidebook);
+  const isBasketed = guidebookIds.includes(guidebook.id);
 
   useEffect(() => {
-    async function loadBasketState() {
-      if (!showBasketAction) {
-        return;
-      }
-
-      setIsBasketed((await readBasketGuidebookIds()).includes(guidebook.id));
+    if (showBasketAction) {
+      void loadCart();
     }
-
-    void loadBasketState();
-  }, [guidebook.id, showBasketAction]);
+  }, [loadCart, showBasketAction]);
 
   async function toggleBasket() {
     try {
       setIsBasketUpdating(true);
-      const nextGuidebookIds = isBasketed ? await removeBasketGuidebookId(guidebook.id) : await addBasketGuidebookId(guidebook.id);
-      setIsBasketed(nextGuidebookIds.includes(guidebook.id));
+      if (isBasketed) {
+        await removeGuidebook(guidebook.id);
+      } else {
+        await addGuidebook(guidebook.id);
+      }
     } finally {
       setIsBasketUpdating(false);
     }

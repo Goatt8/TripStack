@@ -6,7 +6,7 @@ import { TopTabBar } from '@/components/common/TopTabBar';
 import { CreateGuidebookModal, type CreateGuidebookDraft } from '@/components/creator/CreateGuidebookModal';
 import { GuidebookPrintDetailModal } from '@/components/guidebook/GuidebookPrintDetailModal';
 import { currentAccount } from '@/features/account/currentAccount';
-import { BASKET_GUIDEBOOK_EVENT_NAME, readBasketGuidebookIds } from '@/features/basket/guidebookBasket';
+import { usePrintCartStore } from '@/features/basket/printCartStore';
 import {
   addDeletedGuidebookId,
   addHiddenGuidebookId,
@@ -51,10 +51,11 @@ export function CreatorStudioFeed({ creators, guidebooks, viewedCreatorId = curr
   const [selectedBlocks, setSelectedBlocks] = useState<GuidebookBlock[]>([]);
   const [isCreateGuidebookOpen, setIsCreateGuidebookOpen] = useState(false);
   const [isInterestPanelOpen, setIsInterestPanelOpen] = useState(false);
-  const [basketGuidebookIds, setBasketGuidebookIds] = useState<number[]>([]);
   const [interestedCreatorIds, setInterestedCreatorIds] = useState<number[]>([]);
   const [createdGuidebooks, setCreatedGuidebooks] = useState<Guidebook[]>([]);
   const [createdGuidebookBlocks, setCreatedGuidebookBlocks] = useState<Record<number, GuidebookBlock[]>>({});
+  const basketGuidebookIds = usePrintCartStore((state) => state.guidebookIds);
+  const loadCart = usePrintCartStore((state) => state.loadCart);
   const creator = creators.find((item) => item.id === viewedCreatorId);
   const isOwnCreator = viewedCreatorId === currentAccount.creatorId;
 
@@ -72,23 +73,8 @@ export function CreatorStudioFeed({ creators, guidebooks, viewedCreatorId = curr
   }, []);
 
   useEffect(() => {
-    async function refreshBasketGuidebooks() {
-      try {
-        setBasketGuidebookIds(await readBasketGuidebookIds());
-      } catch {
-        setBasketGuidebookIds([]);
-      }
-    }
-
-    void refreshBasketGuidebooks();
-
-    function syncBasketGuidebooks(event: Event) {
-      setBasketGuidebookIds((event as CustomEvent<number[]>).detail ?? []);
-    }
-
-    window.addEventListener(BASKET_GUIDEBOOK_EVENT_NAME, syncBasketGuidebooks);
-    return () => window.removeEventListener(BASKET_GUIDEBOOK_EVENT_NAME, syncBasketGuidebooks);
-  }, []);
+    void loadCart();
+  }, [loadCart]);
 
   useEffect(() => {
     function closeOnEscape(event: KeyboardEvent) {

@@ -1,9 +1,9 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 
-import { BASKET_GUIDEBOOK_EVENT_NAME, readBasketGuidebookIds } from '@/features/basket/guidebookBasket';
+import { usePrintCartStore } from '@/features/basket/printCartStore';
 
 function PaperIcon() {
   return (
@@ -17,26 +17,12 @@ function PaperIcon() {
 }
 
 export function HeaderPrintButton() {
-  const [basketCount, setBasketCount] = useState(0);
+  const basketCount = usePrintCartStore((state) => state.guidebookIds.length);
+  const loadCart = usePrintCartStore((state) => state.loadCart);
 
   useEffect(() => {
-    async function refreshBasketCount() {
-      try {
-        setBasketCount((await readBasketGuidebookIds()).length);
-      } catch {
-        setBasketCount(0);
-      }
-    }
-
-    void refreshBasketCount();
-
-    function syncBasketCount(event: Event) {
-      setBasketCount(((event as CustomEvent<number[]>).detail ?? []).length);
-    }
-
-    window.addEventListener(BASKET_GUIDEBOOK_EVENT_NAME, syncBasketCount);
-    return () => window.removeEventListener(BASKET_GUIDEBOOK_EVENT_NAME, syncBasketCount);
-  }, []);
+    void loadCart();
+  }, [loadCart]);
 
   return (
     <Link className="header-print-button" href="/print-cart" aria-label={`담아둔 가이드북 ${basketCount}개 인쇄하기`}>

@@ -2,52 +2,38 @@
 
 import { useEffect, useMemo, useState } from 'react';
 
-import {
-  BASKET_GUIDEBOOK_EVENT_NAME,
-  emitBasketGuidebookIds,
-} from '@/features/basket/guidebookBasket';
-import { cartService } from '@/services/cartService';
-import type { PrintCartItem } from '@/types';
+import { usePrintCartStore } from '@/features/basket/printCartStore';
 
 function formatCurrency(value: number) {
   return `${value.toLocaleString()}원`;
 }
 
 export function GuidebookPrintCart() {
-  const [cartItems, setCartItems] = useState<PrintCartItem[]>([]);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [didSetInitialSelection, setDidSetInitialSelection] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const cartItems = usePrintCartStore((state) => state.items);
+  const error = usePrintCartStore((state) => state.error);
+  const loading = usePrintCartStore((state) => state.loading);
+  const loadCart = usePrintCartStore((state) => state.loadCart);
+  const removeCartGuidebook = usePrintCartStore((state) => state.removeGuidebook);
+  const updateCartQuantity = usePrintCartStore((state) => state.updateQuantity);
 
   useEffect(() => {
-    async function loadCartItems() {
-      try {
-        setLoading(true);
-        setError('');
-        const items = await cartService.getItems();
-        const ids = items.map((item) => item.guidebookId);
-        setCartItems(items);
-        setSelectedIds(ids);
-        emitBasketGuidebookIds(ids);
-      } catch {
-        setError('담아둔 가이드북 정보를 불러오지 못했습니다.');
-      } finally {
-        setLoading(false);
-      }
+    void loadCart();
+  }, [loadCart]);
+
+  useEffect(() => {
+    const guidebookIds = cartItems.map((item) => item.guidebookId);
+
+    if (!didSetInitialSelection && guidebookIds.length > 0) {
+      setSelectedIds(guidebookIds);
+      setDidSetInitialSelection(true);
+      return;
     }
 
-    void loadCartItems();
-
-    function syncBasket(event: Event) {
-      const nextIds = (event as CustomEvent<number[]>).detail ?? [];
-      setSelectedIds((previous) => previous.filter((id) => nextIds.includes(id)));
-      void cartService.getItems().then(setCartItems).catch(() => setError('담아둔 가이드북 정보를 불러오지 못했습니다.'));
-    }
-
-    window.addEventListener(BASKET_GUIDEBOOK_EVENT_NAME, syncBasket);
-    return () => window.removeEventListener(BASKET_GUIDEBOOK_EVENT_NAME, syncBasket);
-  }, []);
+    setSelectedIds((previous) => previous.filter((id) => guidebookIds.includes(id)));
+  }, [cartItems, didSetInitialSelection]);
 
   const allSelected = cartItems.length > 0 && cartItems.every((item) => selectedIds.includes(item.guidebookId));
   const selectedItems = cartItems.filter((item) => selectedIds.includes(item.guidebookId));
@@ -73,26 +59,12 @@ export function GuidebookPrintCart() {
     const currentItem = cartItems.find((item) => item.guidebookId === guidebookId);
     const nextQuantity = Math.max(1, (currentItem?.quantity ?? 1) + amount);
 
-    setCartItems((previous) => previous.map((item) => (
-      item.guidebookId === guidebookId ? { ...item, quantity: nextQuantity } : item
-    )));
-
-    try {
-      const updated = await cartService.updateQuantity(guidebookId, nextQuantity);
-      setCartItems((previous) => previous.map((item) => (
-        item.guidebookId === guidebookId ? updated : item
-      )));
-    } catch {
-      setError('수량을 저장하지 못했습니다.');
-    }
+    await updateCartQuantity(guidebookId, nextQuantity);
   }
 
   async function removeGuidebook(guidebookId: number) {
-    await cartService.removeItem(guidebookId);
-    const nextItems = cartItems.filter((item) => item.guidebookId !== guidebookId);
-    setCartItems(nextItems);
+    await removeCartGuidebook(guidebookId);
     setSelectedIds((previous) => previous.filter((id) => id !== guidebookId));
-    emitBasketGuidebookIds(nextItems.map((item) => item.guidebookId));
   }
 
   if (loading) {
@@ -114,7 +86,7 @@ export function GuidebookPrintCart() {
       {cartItems.length === 0 ? (
         <div className="print-cart-empty">
           <strong>담아둔 가이드북이 없습니다.</strong>
-          <p>가이드북 상세화면에서 내 가이드북에 담기를 누르면 이곳에 표시됩니다.</p>
+          <p>가이드북 상세화면에서 인쇄목록에 담기를 누르면 이곳에 표시됩니다.</p>
         </div>
       ) : (
         <div className="print-cart-layout">
