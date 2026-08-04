@@ -547,19 +547,19 @@
 
 .create-guidebook-detail-section {
   display: grid;
-  gap: 14px;
-  width: min(500px, 100%);
+  gap: 12px;
+  width: min(620px, 100%);
   border-top: 1px solid #eef2f7;
   padding-top: 18px;
 }
 
 .create-guidebook-detail-block {
   display: grid;
-  gap: 12px;
+  gap: 0;
   border: 1px solid #eef2f7;
   border-radius: 8px;
   background: #ffffff;
-  padding: 12px;
+  overflow: hidden;
 }
 
 .create-guidebook-detail-block-title {
@@ -567,6 +567,9 @@
   align-items: center;
   justify-content: space-between;
   gap: 10px;
+  padding: 12px 14px;
+  border-bottom: 1px solid #eef2f7;
+  background: #ffffff;
 }
 
 .create-guidebook-detail-block-title span {
@@ -594,19 +597,37 @@
 .create-guidebook-image-drop {
   display: grid;
   place-items: center;
-  gap: 6px;
-  min-height: 150px;
-  border: 1px dashed #cbd5e1;
-  border-radius: 8px;
+  width: 100%;
+  overflow: hidden;
+  border: 0;
+  border-bottom: 1px solid #eef2f7;
+  border-radius: 0;
   background: #f8fafc;
   color: #667085;
   cursor: pointer;
-  padding: 18px;
+  aspect-ratio: 16 / 9;
+  padding: 0;
   text-align: center;
 }
 
 .create-guidebook-image-drop input {
   display: none;
+}
+
+.create-guidebook-image-drop > div {
+  display: grid;
+  place-items: center;
+  gap: 6px;
+  width: calc(100% - 28px);
+  height: calc(100% - 28px);
+  border: 1px dashed #cbd5e1;
+  border-radius: 8px;
+}
+
+.create-guidebook-image-drop img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .create-guidebook-image-drop strong {
@@ -619,6 +640,12 @@
   color: #667085;
   font-size: 11px;
   font-weight: 800;
+}
+
+.create-guidebook-page-fields {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
 }
 
 .create-guidebook-text-field {

@@ -38,6 +38,11 @@ export const guidebookService = {
       body: JSON.stringify(payload),
     });
   },
+  deleteGuidebook(guidebookId: number) {
+    return request<void>(`/guidebooks/${guidebookId}`, {
+      method: 'DELETE',
+    });
+  },
   getOrders() {
     return request<Order[]>('/orders');
   },

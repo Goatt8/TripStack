@@ -11,7 +11,7 @@ type GuidebookPrintDetailModalProps = {
   creator?: User;
   guidebook: Guidebook;
   onClose: () => void;
-  onDelete?: () => void;
+  onDelete?: () => Promise<void> | void;
   onEdit?: () => void;
   onHide?: () => void;
   showBasketAction?: boolean;

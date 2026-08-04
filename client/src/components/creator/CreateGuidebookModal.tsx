@@ -5,7 +5,7 @@ import { useState, type DragEvent, type PointerEvent } from 'react';
 import type { GuidebookRoutePoint } from '@/types';
 
 type CreateGuidebookModalProps = {
-  onCreate: (guidebook: CreateGuidebookDraft) => void;
+  onCreate: (guidebook: CreateGuidebookDraft) => Promise<void> | void;
   onClose: () => void;
 };
 
@@ -63,29 +63,9 @@ export function CreateGuidebookModal({ onClose, onCreate }: CreateGuidebookModal
   const [selectedLocation, setSelectedLocation] = useState(locationOptions[1]);
   const [activePointId, setActivePointId] = useState<number | null>(null);
   const [detailBlocks, setDetailBlocks] = useState<CreateGuidebookBlockDraft[]>([createEmptyDetailBlock()]);
+  const [isCreating, setIsCreating] = useState(false);
   const [validationMessage, setValidationMessage] = useState('');
   const [routePoints, setRoutePoints] = useState(initialRoutePoints);
-
-  function addRoutePoint() {
-    setRoutePoints((previous) => {
-      const nextOrder = previous.length + 1;
-
-      return [
-        ...previous,
-        {
-          id: Date.now(),
-          pointOrder: nextOrder,
-          title: '',
-          x: 18 + (previous.length * 13) % 64,
-          y: 28 + (previous.length * 17) % 48,
-        },
-      ];
-    });
-  }
-
-  function removeLastRoutePoint() {
-    setRoutePoints((previous) => previous.slice(0, -1).map((point, index) => ({ ...point, pointOrder: index + 1 })));
-  }
 
   function readVideo() {
     setDetailBlocks((previous) => previous.map((block, index) => (
@@ -144,7 +124,7 @@ export function CreateGuidebookModal({ onClose, onCreate }: CreateGuidebookModal
     });
   }
 
-  function createGuidebook() {
+  async function createGuidebook() {
     const hasEmptyRequiredField = detailBlocks.some((block) => (
       block.title.trim().length === 0
       || block.subtitle.trim().length === 0
@@ -165,19 +145,27 @@ export function CreateGuidebookModal({ onClose, onCreate }: CreateGuidebookModal
     }));
     const title = normalizedBlocks[0]?.title || `${selectedLocation.city} 새 가이드북`;
 
-    onCreate({
-      country: selectedLocation.country,
-      region: selectedLocation.city,
-      coverImageUrl: normalizedBlocks[0]?.imageUrl || '/images/guidebooks/user8-1.jpeg',
-      mapImageUrl: selectedLocation.mapImageUrl,
-      routePoints: routePoints.map((point, index) => ({
-        ...point,
-        pointOrder: index + 1,
-        title: point.title.trim() || `위치 포인트 ${index + 1}`,
-      })),
-      title,
-      blocks: normalizedBlocks,
-    });
+    try {
+      setIsCreating(true);
+      setValidationMessage('');
+      await onCreate({
+        country: selectedLocation.country,
+        region: selectedLocation.city,
+        coverImageUrl: normalizedBlocks[0]?.imageUrl || '/images/guidebooks/user8-1.jpeg',
+        mapImageUrl: selectedLocation.mapImageUrl,
+        routePoints: routePoints.map((point, index) => ({
+          ...point,
+          pointOrder: index + 1,
+          title: `포인트 ${index + 1}`,
+        })),
+        title,
+        blocks: normalizedBlocks,
+      });
+    } catch {
+      setValidationMessage('가이드북 생성에 실패했습니다');
+    } finally {
+      setIsCreating(false);
+    }
   }
 
   return (
@@ -281,45 +269,19 @@ export function CreateGuidebookModal({ onClose, onCreate }: CreateGuidebookModal
             </div>
           </div>
 
-          <div className="create-guidebook-category-section compact">
-            <div className="create-guidebook-fieldset-title">
-              <strong>위치 포인트</strong>
-              <div>
-                <button type="button" onClick={addRoutePoint}>+</button>
-                <button type="button" aria-label="마지막 위치 포인트 삭제" onClick={removeLastRoutePoint} disabled={routePoints.length === 0}>
-                  -
-                </button>
-              </div>
-            </div>
-            <div className="create-guidebook-category-row">
-              {routePoints.map((point, index) => (
-                <div className="create-guidebook-route-input" key={point.id}>
-                  <input
-                    type="text"
-                    placeholder="위치 포인트"
-                    value={point.title}
-                    onChange={(event) => {
-                      setRoutePoints((previous) => previous.map((item) => (
-                        item.id === point.id ? { ...item, title: event.target.value } : item
-                      )));
-                    }}
-                    aria-label={`${index + 1}번 위치 포인트`}
-                  />
-                </div>
-              ))}
-            </div>
-          </div>
-
           <section className="create-guidebook-detail-section">
             <div className="create-guidebook-fieldset-title">
-              <strong>사진과 내용</strong>
-              <button type="button" onClick={addDetailBlock}>+</button>
+              <div>
+                <strong>가이드북 페이지</strong>
+                <span>{detailBlocks.length}개 페이지</span>
+              </div>
+              <button type="button" onClick={addDetailBlock} aria-label="가이드북 페이지 추가">+</button>
             </div>
 
             {detailBlocks.map((block, index) => (
               <article className="create-guidebook-detail-block" key={block.id}>
                 <div className="create-guidebook-detail-block-title">
-                  <span>Block {index + 1}</span>
+                  <span>Page {index + 1}</span>
                   <button
                     type="button"
                     onClick={() => removeDetailBlock(block.id)}
@@ -337,38 +299,46 @@ export function CreateGuidebookModal({ onClose, onCreate }: CreateGuidebookModal
                     accept="image/*"
                     onChange={(event) => handleImageSelect(block.id, event.target.files?.[0])}
                   />
-                  <strong>{block.imageName || '사진을 드래그하거나 클릭해서 첨부'}</strong>
-                  <span>가이드북 상세 페이지에 들어갈 장면</span>
+                  {block.imageUrl ? (
+                    <img src={block.imageUrl} alt={`${block.title || `페이지 ${index + 1}`} 첨부 이미지`} />
+                  ) : (
+                    <div>
+                      <strong>{block.imageName || '사진 첨부'}</strong>
+                      <span>드래그하거나 클릭해서 이미지를 넣어주세요</span>
+                    </div>
+                  )}
                 </label>
 
-                <label className="create-guidebook-text-field">
-                  <span>타이틀</span>
-                  <input
-                    type="text"
-                    placeholder="장소 또는 장면 타이틀"
-                    value={block.title}
-                    onChange={(event) => updateDetailBlock(block.id, { title: event.target.value })}
-                  />
-                </label>
+                <div className="create-guidebook-page-fields">
+                  <label className="create-guidebook-text-field">
+                    <span>타이틀</span>
+                    <input
+                      type="text"
+                      placeholder="장소 또는 장면 타이틀"
+                      value={block.title}
+                      onChange={(event) => updateDetailBlock(block.id, { title: event.target.value })}
+                    />
+                  </label>
 
-                <label className="create-guidebook-text-field">
-                  <span>서브타이틀 · 위치</span>
-                  <input
-                    type="text"
-                    placeholder="지역, 위치, 이동 포인트"
-                    value={block.subtitle}
-                    onChange={(event) => updateDetailBlock(block.id, { subtitle: event.target.value })}
-                  />
-                </label>
+                  <label className="create-guidebook-text-field">
+                    <span>위치</span>
+                    <input
+                      type="text"
+                      placeholder="지역, 위치, 이동 포인트"
+                      value={block.subtitle}
+                      onChange={(event) => updateDetailBlock(block.id, { subtitle: event.target.value })}
+                    />
+                  </label>
 
-                <label className="create-guidebook-text-field">
-                  <span>내용</span>
-                  <textarea
-                    placeholder="읽기 버튼을 누르면 분석된 내용이 임시로 들어옵니다."
-                    value={block.content}
-                    onChange={(event) => updateDetailBlock(block.id, { content: event.target.value })}
-                  />
-                </label>
+                  <label className="create-guidebook-text-field">
+                    <span>내용</span>
+                    <textarea
+                      placeholder="읽기 버튼을 누르면 분석된 내용이 임시로 들어옵니다."
+                      value={block.content}
+                      onChange={(event) => updateDetailBlock(block.id, { content: event.target.value })}
+                    />
+                  </label>
+                </div>
               </article>
             ))}
           </section>
@@ -378,7 +348,9 @@ export function CreateGuidebookModal({ onClose, onCreate }: CreateGuidebookModal
           {validationMessage && <p role="alert">{validationMessage}</p>}
           <div>
             <button type="button" onClick={onClose}>취소</button>
-            <button type="button" className="primary" onClick={createGuidebook}>생성</button>
+            <button type="button" className="primary" onClick={() => void createGuidebook()} disabled={isCreating}>
+              {isCreating ? '생성 중' : '생성'}
+            </button>
           </div>
         </footer>
       </section>

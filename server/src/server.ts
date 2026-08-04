@@ -438,13 +438,13 @@ app.post('/api/guidebooks', (request, response) => {
     `);
 
     (routePoints && routePoints.length > 0 ? routePoints : [
-      { pointOrder: 1, title: `${region} 시작점`, x: 24, y: 32 },
-      { pointOrder: 2, title: `${region} 도착점`, x: 66, y: 58 },
+      { pointOrder: 1, title: '포인트 1', x: 24, y: 32 },
+      { pointOrder: 2, title: '포인트 2', x: 66, y: 58 },
     ]).forEach((point, index) => {
       insertRoutePoint.run({
         guidebookId,
         pointOrder: point.pointOrder ?? index + 1,
-        title: point.title?.trim() || `위치 포인트 ${index + 1}`,
+        title: point.title?.trim() || `포인트 ${index + 1}`,
         x: typeof point.x === 'number' ? point.x : 50,
         y: typeof point.y === 'number' ? point.y : 50,
       });
@@ -469,6 +469,32 @@ app.post('/api/guidebooks', (request, response) => {
   `).all(guidebookId) as GuidebookBlockRow[];
 
   response.status(201).json({ guidebook, blocks: createdBlocks });
+});
+
+app.delete('/api/guidebooks/:id', (request, response) => {
+  const guidebookId = Number(request.params.id);
+
+  if (!Number.isInteger(guidebookId)) {
+    response.status(400).json({ message: 'Valid guidebook id is required.' });
+    return;
+  }
+
+  const guidebook = db.prepare('SELECT id FROM guidebooks WHERE id = ?').get(guidebookId);
+
+  if (!guidebook) {
+    response.status(404).json({ message: 'Guidebook not found.' });
+    return;
+  }
+
+  const transaction = db.transaction(() => {
+    db.prepare('DELETE FROM orders WHERE guidebook_id = ?').run(guidebookId);
+    db.prepare('DELETE FROM custom_prints WHERE guidebook_id = ?').run(guidebookId);
+    db.prepare('DELETE FROM print_cart_items WHERE guidebook_id = ?').run(guidebookId);
+    db.prepare('DELETE FROM guidebooks WHERE id = ?').run(guidebookId);
+  });
+
+  transaction();
+  response.status(204).send();
 });
 
 app.get('/api/orders', (_request, response) => {

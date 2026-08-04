@@ -135,12 +135,18 @@ export function CreatorStudioFeed({ creators, guidebooks, viewedCreatorId = curr
     setSelectedBlocks([]);
   }
 
-  function deleteSelectedGuidebook() {
+  async function deleteSelectedGuidebook() {
     if (!selectedGuidebook) {
       return;
     }
 
+    await guidebookService.deleteGuidebook(selectedGuidebook.id);
     setDeletedGuidebookIds(addDeletedGuidebookId(selectedGuidebook.id));
+    setCreatedGuidebooks((previous) => previous.filter((guidebook) => guidebook.id !== selectedGuidebook.id));
+    setCreatedGuidebookBlocks((previous) => {
+      const { [selectedGuidebook.id]: _removed, ...nextBlocks } = previous;
+      return nextBlocks;
+    });
     closePrintDetail();
   }
 
@@ -306,7 +312,7 @@ export function CreatorStudioFeed({ creators, guidebooks, viewedCreatorId = curr
       )}
 
       {isCreateGuidebookOpen && (
-        <CreateGuidebookModal onClose={() => setIsCreateGuidebookOpen(false)} onCreate={(draft) => void createGuidebookFromDraft(draft)} />
+        <CreateGuidebookModal onClose={() => setIsCreateGuidebookOpen(false)} onCreate={createGuidebookFromDraft} />
       )}
 
       <aside className={isInterestPanelOpen ? 'interest-creator-panel open' : 'interest-creator-panel'} aria-label="관심 크리에이터">
