@@ -25,6 +25,7 @@ type GuidebookRow = {
   coverImageUrl: string;
   mapImageUrl: string;
   printCount: number;
+  price: number;
   followerCount: number;
   trustScore: number;
   blockCount: number;
@@ -63,6 +64,7 @@ type PrintCartItemRow = {
   region: string;
   coverImageUrl: string;
   printCount: number;
+  price: number;
 };
 
 type CreateGuidebookBody = {
@@ -123,6 +125,7 @@ function getGuidebookById(guidebookId: number) {
       guidebooks.cover_image_url AS coverImageUrl,
       guidebooks.map_image_url AS mapImageUrl,
       guidebooks.print_count AS printCount,
+      guidebooks.price,
       users.follower_count AS followerCount,
       users.trust_score AS trustScore,
       COUNT(guidebook_blocks.id) AS blockCount,
@@ -172,7 +175,8 @@ function getPrintCartItems(userId: number) {
       guidebooks.country,
       guidebooks.region,
       guidebooks.cover_image_url AS coverImageUrl,
-      guidebooks.print_count AS printCount
+      guidebooks.print_count AS printCount,
+      guidebooks.price
     FROM print_cart_items
     JOIN guidebooks ON guidebooks.id = print_cart_items.guidebook_id
     JOIN users ON users.id = guidebooks.creator_id
@@ -218,6 +222,7 @@ app.get('/api/guidebooks', (request, response) => {
       guidebooks.cover_image_url AS coverImageUrl,
       guidebooks.map_image_url AS mapImageUrl,
       guidebooks.print_count AS printCount,
+      guidebooks.price,
       users.follower_count AS followerCount,
       users.trust_score AS trustScore,
       COUNT(guidebook_blocks.id) AS blockCount,
@@ -391,8 +396,8 @@ app.post('/api/guidebooks', (request, response) => {
 
   const transaction = db.transaction(() => {
     const createdGuidebook = db.prepare(`
-      INSERT INTO guidebooks (creator_id, title, country, region, cover_image_url, map_image_url, print_count)
-      VALUES (@creatorId, @title, @country, @region, @coverImageUrl, @mapImageUrl, 0)
+      INSERT INTO guidebooks (creator_id, title, country, region, cover_image_url, map_image_url, print_count, price)
+      VALUES (@creatorId, @title, @country, @region, @coverImageUrl, @mapImageUrl, 0, 12800)
     `).run({
       creatorId,
       title,

@@ -9,8 +9,6 @@ import {
 import { cartService } from '@/services/cartService';
 import type { PrintCartItem } from '@/types';
 
-const UNIT_PRICE = 12800;
-
 function formatCurrency(value: number) {
   return `${value.toLocaleString()}원`;
 }
@@ -55,7 +53,7 @@ export function GuidebookPrintCart() {
   const selectedItems = cartItems.filter((item) => selectedIds.includes(item.guidebookId));
   const selectedCount = selectedItems.length;
   const totalQuantity = selectedItems.reduce((sum, item) => sum + item.quantity, 0);
-  const totalPrice = selectedItems.reduce((sum, item) => sum + item.quantity * UNIT_PRICE, 0);
+  const totalPrice = selectedItems.reduce((sum, item) => sum + item.quantity * item.price, 0);
 
   const selectedIdSet = useMemo(() => new Set(selectedIds), [selectedIds]);
 
@@ -145,14 +143,14 @@ export function GuidebookPrintCart() {
                     <div className="print-cart-info">
                       <strong>{item.title}</strong>
                       <p>{item.creatorName} · {item.region}, {item.country}</p>
-                      <span>단가 {formatCurrency(UNIT_PRICE)}</span>
+                      <span>단가 {formatCurrency(item.price)}</span>
                     </div>
                     <div className="print-cart-quantity" aria-label={`${item.title} 출력 부수`}>
                       <button type="button" onClick={() => void updateQuantity(item.guidebookId, -1)}>-</button>
                       <strong>{item.quantity}</strong>
                       <button type="button" onClick={() => void updateQuantity(item.guidebookId, 1)}>+</button>
                     </div>
-                    <strong className="print-cart-price">{formatCurrency(item.quantity * UNIT_PRICE)}</strong>
+                    <strong className="print-cart-price">{formatCurrency(item.quantity * item.price)}</strong>
                     <button className="print-cart-remove" type="button" onClick={() => void removeGuidebook(item.guidebookId)}>
                       제거하기
                     </button>

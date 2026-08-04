@@ -21,6 +21,7 @@ export type Guidebook = {
   coverImageUrl: string;
   mapImageUrl: string;
   printCount: number;
+  price: number;
   rankInRegion: number;
   followerCount: number;
   trustScore: number;
@@ -74,6 +75,7 @@ export type PrintCartItem = {
   region: string;
   coverImageUrl: string;
   printCount: number;
+  price: number;
 };
 
 export type RegionOption = {
