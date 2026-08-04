@@ -132,6 +132,7 @@ _____________________
 ### 기술 스택
 
 - Frontend: Next.js, React, TypeScript
+- State: Zustand
 - Backend: Express, TypeScript
 - Database: SQLite, better-sqlite3
 - Runtime: Docker Compose
@@ -140,6 +141,7 @@ _____________________
 
 - Next.js는 파일 기반 라우팅과 React 컴포넌트 구조를 활용해 메인 화면, 크리에이터 화면, 인쇄 장바구니 화면을 빠르게 나누기에 적합했습니다.
 - React는 상세 모달, 검색 탭, 장바구니 수량 변경처럼 상태가 필요한 UI를 컴포넌트 단위로 관리하기 좋았습니다.
+- Zustand는 헤더, 상세 모달, 인쇄 장바구니가 함께 사용하는 인쇄목록 상태를 중앙에서 관리하기 위해 사용했습니다.
 - Express는 가이드북, 상세 블록, 장바구니, 주문 API를 단순한 REST 구조로 구현하기에 적합했습니다.
 - SQLite는 별도 DB 서버 설치 없이 Docker 실행 직후 더미데이터와 CRUD 흐름을 확인할 수 있어 과제 환경에 적합했습니다.
 - Docker Compose는 심사자가 프론트엔드와 백엔드를 한 번에 실행할 수 있도록 하기 위해 사용했습니다.
@@ -151,16 +153,30 @@ TripStack
 ├── client
 │   └── src
 │       ├── app
+│       │   ├── page.tsx              # 메인 소비자 피드
+│       │   ├── creator               # 내/상대 크리에이터 화면 라우트
+│       │   ├── print-cart            # 인쇄 장바구니 화면 라우트
+│       │   └── styles                # 화면별 CSS 분리
 │       ├── components
+│       │   ├── common                # 공용 헤더, 상단 탭바, 인쇄목록 버튼
+│       │   ├── consumer              # 홈 피드, 검색, 크리에이터 레일
+│       │   ├── creator               # 크리에이터 화면, 생성 모달
+│       │   ├── guidebook             # 가이드북 상세/인쇄물 모달
+│       │   └── print                 # 인쇄 장바구니 UI
 │       ├── features
-│       ├── services
-│       └── types
+│       │   ├── account               # 데모 계정 정보
+│       │   ├── basket                # Zustand 인쇄목록 store
+│       │   ├── creator              # 크리에이터 게시물 관리 상태
+│       │   ├── guidebook             # 가이드북 상수와 catalog hook
+│       │   └── interest              # 관심 크리에이터 상태
+│       ├── services                  # Express API 요청 함수
+│       └── types                     # 프론트 공용 타입
 ├── server
 │   └── src
-│       ├── db.ts
-│       └── server.ts
+│       ├── db.ts                     # SQLite 연결, 테이블 생성, seed 데이터
+│       └── server.ts                 # Express REST API
 ├── data
-│   └── tripstack.db
+│   └── tripstack.db                  # 로컬 SQLite DB 파일
 └── docker-compose.yml
 ```
 
