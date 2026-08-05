@@ -158,8 +158,8 @@ export function GuidebookCategorySections({
       <section className="category-guide-section">
         <div className="section-heading category-section-heading">
           <div>
-            <h2>오늘의 추천 리스트</h2>
-            <p>지금 가장 많이 저장된 가이드북을 먼저 둘러보세요.</p>
+            <h2>지금 가장 많이 담은 추천 가이드북</h2>
+            <p>사용자들이 인쇄목록에 많이 담은 순서로 보여드려요.</p>
           </div>
         </div>
 
@@ -172,7 +172,7 @@ export function GuidebookCategorySections({
         <section className="category-guide-section" key={section.keyword.id}>
           <div className="section-heading category-section-heading">
             <div>
-              <h2>{section.keyword.label} 여행 가이드</h2>
+              <h2>{section.keyword.id === 'summer' ? '인쇄 소장하기 좋은 여름 가이드북' : `${section.keyword.label} 여행 가이드`}</h2>
               <p>선택한 조건에 맞는 인기 가이드북을 둘러보세요.</p>
             </div>
           </div>
