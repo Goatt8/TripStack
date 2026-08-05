@@ -1,9 +1,18 @@
 # TripStack
 
+<table align="center">
+   <tr>
+     <td width="60%" align="center">
+<img width="80%" alt="스크린샷 2026-08-05 오후 12 27 02" src="https://github.com/user-attachments/assets/5c4737bb-be6b-4b70-b56a-fcf44136bd87" /><br>
+       <sub><b> WebApp Tripstack </b></sub>
+       </td>
+      </tr>
+</table>
+
 ## 1. 서비스 소개
 
-TripStack은 여행 크리에이터의 영상·사진 콘텐츠를 분석해 인쇄 가능한 여행 가이드북으로 정리하고, 사용자가 마음에 드는 가이드북을 담아 인쇄 주문 흐름까지 확인할 수 있는 콘텐츠 서비스입니다.
-여행 영상log를 추억으로 삼는 것 뿐 아니라 굿즈,가이드북 형태의 인쇄물 상품형태로 이어지도록 하는 플랫폼입니다.
+TripStack은 여행 크리에이터의 영상·사진 콘텐츠를 분석해 인쇄 가능한 여행 가이드북으로 정리하고, 사용자가 마음에 드는 가이드북을 담아 인쇄 주문 흐름까지 확인할 수 있는 웹앱 콘텐츠 서비스입니다.
+여행 영상log를 추억으로 삼는 것 뿐 아니라 굿즈, 가이드북 형태의 인쇄물 상품형태로 이어지도록 목표하는 플랫폼입니다.
 
 ### 타겟 사용자
 
@@ -34,7 +43,78 @@ TripStack은 여행 크리에이터의 영상·사진 콘텐츠를 분석해 인
 _____________________
 <br>
 
-## 2. 실행 방법 (Docker)
+## 2. 기술 스택 및 아키텍처
+
+### 기술 스택
+
+- Frontend: Next.js, React, TypeScript
+- State: Zustand
+- Backend: Express, TypeScript
+- Database: SQLite, better-sqlite3
+- Runtime: Docker Compose
+- Library: Zustand
+
+### 선택 이유
+
+- Next.js는 파일 기반 라우팅과 React 컴포넌트 구조를 활용해 메인 화면, 크리에이터 화면, 인쇄하기/판매목록 화면을 빠르게 나누기에 적합했습니다.
+- React는 상세 모달, 검색 탭, 장바구니 수량 변경처럼 상태가 필요한 UI를 컴포넌트 단위로 관리하기 좋았습니다.
+- Express는 가이드북, 상세 블록, 장바구니, 주문 API를 단순한 REST 구조로 구현하기에 적합했습니다.
+- SQLite는 별도 DB 서버 설치 없이 Docker 실행 직후 더미데이터와 CRUD 흐름을 확인할 수 있어 과제 환경에 적합했습니다.
+- Docker Compose는 심사자가 프론트엔드와 백엔드를 한 번에 실행할 수 있도록 하기 위해 사용했습니다.
+- Zustand로 인쇄목록상태를 store 상태관리로 중앙집중해 관리를 용이하게 변경했습니다.
+
+### 주요 디렉터리 구조
+
+```txt
+TripStack
+├── client
+│   └── src
+│       ├── app
+│       │   ├── page.tsx              # 메인 소비자 피드
+│       │   ├── consumer              # 기존 소비자 경로를 홈으로 연결하는 redirect 라우트
+│       │   ├── creator               # 내 화면과 상대 크리에이터 화면 라우트
+│       │   ├── print-cart            # 인쇄하기/판매목록 화면 라우트
+│       │   └── styles                # 화면별 CSS 분리
+│       ├── components
+│       │   ├── common                # 공용 헤더, 상단 탭바, 주문목록 드롭다운 버튼
+│       │   ├── consumer              # 홈 피드, 검색, 크리에이터 레일, 카테고리 섹션
+│       │   ├── creator               # 크리에이터 화면, 가이드북 생성/수정 모달
+│       │   ├── guidebook             # 가이드북 상세 모달과 인쇄 상세 모달
+│       │   └── print                 # 인쇄하기/판매목록 UI
+│       ├── features
+│       │   ├── account               # 데모 계정 정보
+│       │   ├── basket                # Zustand 인쇄목록 store
+│       │   ├── creator               # 크리에이터 게시물 삭제 상태
+│       │   ├── guidebook             # 가이드북 상수와 catalog hook
+│       │   └── interest              # 관심 크리에이터 상태
+│       ├── services                  # Express API 요청 함수
+│       └── types                     # 프론트 공용 타입
+├── server
+│   └── src
+│       ├── db.ts                     # SQLite 연결, 테이블 생성, seed 데이터
+│       └── server.ts                 # Express REST API
+├── data
+│   └── tripstack.db                  # 로컬 SQLite DB 파일
+└── docker-compose.yml
+```
+
+### 주요 데이터 구조
+
+- `users`: 크리에이터/소비자 계정 정보, 프로필 이미지, 팔로워/신뢰도 수치
+- `guidebooks`: 가이드북 기본 정보, 국가/도시, 썸네일, 지도 이미지, 조회수, 단가
+- `guidebook_route_points`: 가이드북별 지도 위치 포인트와 이동선 좌표
+- `guidebook_blocks`: 상세 화면에 반복 출력되는 이미지, 장소 타이틀, 설명 블록
+- `print_cart_items`: 사용자가 인쇄목록에 담은 가이드북, 수량, 갱신 시각
+- `custom_prints`: 주문 시 선택한 인쇄 레이아웃 정보
+- `orders`: 구매자 주문과 판매자 판매목록을 연결하는 주문 데이터, 수량, 총 금액, 상태값
+
+더미데이터와 이미지는 프로젝트 내부에 포함되어 있으며 외부 데이터 API를 호출하지 않습니다.
+
+_____________________
+<br>
+
+
+## 3. 실행 방법 (Docker)
 
 저장소 클론 후 프로젝트 루트에서 실행합니다.
 
@@ -87,7 +167,7 @@ _____________________
 <br>
 
 
-## 3. 완성한 레벨
+## 4. 완성한 레벨
 
 ### Lv1. 서비스 구현
 
@@ -104,7 +184,7 @@ TripStack의 핵심 콘텐츠인 여행 가이드북을 조회하고 상세 내�
 _____________________
 <br>
 
-## 4. 사용자 경험(UI/UX) 설계
+## 5. 사용자 경험(UI/UX) 설계
 
 <table align="center">
    <tr>
@@ -187,76 +267,6 @@ TripStack의 소비자는 인기 크리에이터의 여행일지를 한눈에 �
 - 로그인/회원가입은 구현하지 않았습니다. 과제 데모에서는 사용자 인증보다 콘텐츠 생성·조회·주문 흐름이 더 중요하다고 판단해 `수박이` 고정 계정으로 구성했습니다.
 - 실제 결제, 배송, 인쇄 API 호출은 구현하지 않았습니다. 과제 조건에 맞춰 주문 흐름과 데이터 저장까지만 구현했습니다.
 - 외부 지도 API는 사용하지 않았습니다. 외부 의존 없이 동작해야 하므로 지도 이미지를 더미 이미지로 두고, 그 위에 위치 포인트와 이동 라인을 표시했습니다.
-
-_____________________
-<br>
-
-## 5. 기술 스택 및 아키텍처
-
-### 기술 스택
-
-- Frontend: Next.js, React, TypeScript
-- State: Zustand
-- Backend: Express, TypeScript
-- Database: SQLite, better-sqlite3
-- Runtime: Docker Compose
-- Library: Zustand
-
-### 선택 이유
-
-- Next.js는 파일 기반 라우팅과 React 컴포넌트 구조를 활용해 메인 화면, 크리에이터 화면, 인쇄하기/판매목록 화면을 빠르게 나누기에 적합했습니다.
-- React는 상세 모달, 검색 탭, 장바구니 수량 변경처럼 상태가 필요한 UI를 컴포넌트 단위로 관리하기 좋았습니다.
-- Express는 가이드북, 상세 블록, 장바구니, 주문 API를 단순한 REST 구조로 구현하기에 적합했습니다.
-- SQLite는 별도 DB 서버 설치 없이 Docker 실행 직후 더미데이터와 CRUD 흐름을 확인할 수 있어 과제 환경에 적합했습니다.
-- Docker Compose는 심사자가 프론트엔드와 백엔드를 한 번에 실행할 수 있도록 하기 위해 사용했습니다.
-- Zustand로 인쇄목록상태를 store 상태관리로 중앙집중해 관리를 용이하게 변경했습니다.
-
-### 주요 디렉터리 구조
-
-```txt
-TripStack
-├── client
-│   └── src
-│       ├── app
-│       │   ├── page.tsx              # 메인 소비자 피드
-│       │   ├── consumer              # 기존 소비자 경로를 홈으로 연결하는 redirect 라우트
-│       │   ├── creator               # 내 화면과 상대 크리에이터 화면 라우트
-│       │   ├── print-cart            # 인쇄하기/판매목록 화면 라우트
-│       │   └── styles                # 화면별 CSS 분리
-│       ├── components
-│       │   ├── common                # 공용 헤더, 상단 탭바, 주문목록 드롭다운 버튼
-│       │   ├── consumer              # 홈 피드, 검색, 크리에이터 레일, 카테고리 섹션
-│       │   ├── creator               # 크리에이터 화면, 가이드북 생성/수정 모달
-│       │   ├── guidebook             # 가이드북 상세 모달과 인쇄 상세 모달
-│       │   └── print                 # 인쇄하기/판매목록 UI
-│       ├── features
-│       │   ├── account               # 데모 계정 정보
-│       │   ├── basket                # Zustand 인쇄목록 store
-│       │   ├── creator               # 크리에이터 게시물 삭제 상태
-│       │   ├── guidebook             # 가이드북 상수와 catalog hook
-│       │   └── interest              # 관심 크리에이터 상태
-│       ├── services                  # Express API 요청 함수
-│       └── types                     # 프론트 공용 타입
-├── server
-│   └── src
-│       ├── db.ts                     # SQLite 연결, 테이블 생성, seed 데이터
-│       └── server.ts                 # Express REST API
-├── data
-│   └── tripstack.db                  # 로컬 SQLite DB 파일
-└── docker-compose.yml
-```
-
-### 주요 데이터 구조
-
-- `users`: 크리에이터/소비자 계정 정보, 프로필 이미지, 팔로워/신뢰도 수치
-- `guidebooks`: 가이드북 기본 정보, 국가/도시, 썸네일, 지도 이미지, 조회수, 단가
-- `guidebook_route_points`: 가이드북별 지도 위치 포인트와 이동선 좌표
-- `guidebook_blocks`: 상세 화면에 반복 출력되는 이미지, 장소 타이틀, 설명 블록
-- `print_cart_items`: 사용자가 인쇄목록에 담은 가이드북, 수량, 갱신 시각
-- `custom_prints`: 주문 시 선택한 인쇄 레이아웃 정보
-- `orders`: 구매자 주문과 판매자 판매목록을 연결하는 주문 데이터, 수량, 총 금액, 상태값
-
-더미데이터와 이미지는 프로젝트 내부에 포함되어 있으며 외부 데이터 API를 호출하지 않습니다.
 
 _____________________
 <br>
