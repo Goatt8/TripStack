@@ -151,7 +151,7 @@ _____________________
   <tr>
     <td width="33.33%" align="center">
       <img width="100%" src="https://github.com/user-attachments/assets/46123d4a-dd66-4eb3-8bfd-2957ca369a69" /><br>
-      <sub><b>7. 메인화면 (주문 인쇄 | 관리 조회)</b></sub>
+      <sub><b>7. 우측상단 고정버튼(주문 인쇄 | 관리 조회)</b></sub>
     </td>
     <td width="33.33%" align="center">
       <img width="100%" src="https://github.com/user-attachments/assets/72901931-ad0f-4490-9a36-0d11e4f05eb3" /><br>
@@ -206,7 +206,6 @@ _____________________
 
 - Next.js는 파일 기반 라우팅과 React 컴포넌트 구조를 활용해 메인 화면, 크리에이터 화면, 인쇄하기/판매목록 화면을 빠르게 나누기에 적합했습니다.
 - React는 상세 모달, 검색 탭, 장바구니 수량 변경처럼 상태가 필요한 UI를 컴포넌트 단위로 관리하기 좋았습니다.
-- Zustand는 헤더, 상세 모달, 인쇄하기 화면이 함께 사용하는 인쇄목록 상태를 중앙에서 관리하기 위해 사용했습니다.
 - Express는 가이드북, 상세 블록, 장바구니, 주문 API를 단순한 REST 구조로 구현하기에 적합했습니다.
 - SQLite는 별도 DB 서버 설치 없이 Docker 실행 직후 더미데이터와 CRUD 흐름을 확인할 수 있어 과제 환경에 적합했습니다.
 - Docker Compose는 심사자가 프론트엔드와 백엔드를 한 번에 실행할 수 있도록 하기 위해 사용했습니다.
