@@ -105,6 +105,35 @@ _____________________
 
 ## 4. 사용자 경험(UI/UX) 설계
 
+<table align="center">
+<img width="80%" alt="스크린샷 2026-08-05 오후 12 27 02" src="https://github.com/user-attachments/assets/5c4737bb-be6b-4b70-b56a-fcf44136bd87" />
+</table>
+
+
+<table align="center">
+  <tr>
+    <td width="33.33%" align="center">
+      <img width="100%" src="https://github.com/user-attachments/assets/a7675b3f-53c2-460d-a394-339fec3d0514" /><br>
+      <sub><b>1. 메인 화면</b></sub>
+    </td>
+    <td width="33.33%" align="center">
+      <img width="100%" src="https://github.com/user-attachments/assets/75198cdc-1331-4cf3-9139-028826f786b6" /><br>
+      <sub><b>2. 검색</b></sub>
+    </td>
+    <td width="33.33%" align="center">
+      <img width="100%"  src="https://github.com/user-attachments/assets/37490f22-bfc3-4752-aca3-fcb8f64716d7" /><br>
+      <sub><b>3. 디테일 뷰</b></sub>
+    </td>
+  </tr>
+</table>
+
+
+
+
+
+
+
+
 ### 타겟 상황
 
 TripStack의 소비자는 인기 크리에이터의 여행일지를 한눈에 보고싶은 사용자입니다. 여행전에 가이드북을 선별하고 인쇄하는 과정은 pc에서 진행될 것이며 넓은 화면으로 여행정보를 한눈에 볼 수 있는 깔끔한 웹 형태의 레이아웃이 필요했습니다.
