@@ -4,7 +4,13 @@
    <tr>
      <td width="60%" align="center">
 <img width="80%" alt="스크린샷 2026-08-05 오후 12 27 02" src="https://github.com/user-attachments/assets/5c4737bb-be6b-4b70-b56a-fcf44136bd87" /><br>
-       <sub><b> WebApp Tripstack </b></sub>
+       <sub><b> WebApp Tripstack </b></sub><br><br>
+      <img src="https://img.shields.io/badge/Next.js-000000?style=flat-square&logo=next.js&logoColor=white">
+      <img src="https://img.shields.io/badge/React-61DAFB?style=flat-square&logo=react&logoColor=black">
+      <img src="https://img.shields.io/badge/SQLite-003B57?style=flat-square&logo=sqlite&logoColor=white">
+      <img src="https://img.shields.io/badge/Zustand-4A3728?style=flat-square&logo=zustand&logoColor=white">
+      <img src="https://img.shields.io/badge/TypeScript-3178C6?style=flat-square&logo=typescript&logoColor=white">
+      <img src="https://img.shields.io/badge/Express-000000?style=flat-square&logo=express&logoColor=white">
        </td>
       </tr>
 </table>
@@ -48,11 +54,10 @@ _____________________
 ### 기술 스택
 
 - Frontend: Next.js, React, TypeScript
-- State: Zustand
+- Library, State: Zustand
 - Backend: Express, TypeScript
 - Database: SQLite, better-sqlite3
 - Runtime: Docker Compose
-- Library: Zustand
 
 ### 선택 이유
 
