@@ -2,14 +2,11 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 
-import { locationCategories } from '@/features/guidebook/constants';
-import type { Guidebook, SearchKeywordOption } from '@/types';
+import type { Guidebook } from '@/types';
 
 type GuidebookSearchBarProps = {
   guidebooks: Guidebook[];
-  searchKeywords: SearchKeywordOption[];
   searchQuery: string;
-  selectedKeyword: string;
   onSearchSubmit: (query: string, keyword: string) => void;
 };
 
@@ -24,24 +21,16 @@ function SearchIcon() {
 
 export function GuidebookSearchBar({
   guidebooks,
-  searchKeywords,
   searchQuery,
-  selectedKeyword,
   onSearchSubmit,
 }: GuidebookSearchBarProps) {
   const searchShellRef = useRef<HTMLDivElement>(null);
   const [draftQuery, setDraftQuery] = useState(searchQuery);
-  const [draftKeyword, setDraftKeyword] = useState(selectedKeyword);
-  const [activePanel, setActivePanel] = useState<'text' | 'keyword' | null>(null);
-  const [selectedCountryId, setSelectedCountryId] = useState(locationCategories[0]?.id ?? '');
+  const [activePanel, setActivePanel] = useState<'text' | null>(null);
 
   useEffect(() => {
     setDraftQuery(searchQuery);
   }, [searchQuery]);
-
-  useEffect(() => {
-    setDraftKeyword(selectedKeyword);
-  }, [selectedKeyword]);
 
   useEffect(() => {
     function closeOnOutsideClick(event: MouseEvent) {
@@ -53,9 +42,6 @@ export function GuidebookSearchBar({
     document.addEventListener('mousedown', closeOnOutsideClick);
     return () => document.removeEventListener('mousedown', closeOnOutsideClick);
   }, []);
-
-  const selectedKeywordLabel = searchKeywords.find((keyword) => keyword.id === draftKeyword)?.label ?? '카테고리 검색';
-  const selectedCountry = locationCategories.find((country) => country.id === selectedCountryId) ?? locationCategories[0];
 
   const suggestions = useMemo(() => {
     const keyword = draftQuery.trim().toLowerCase();
@@ -94,26 +80,29 @@ export function GuidebookSearchBar({
   }, [draftQuery, guidebooks]);
 
   function submitSearch() {
-    onSearchSubmit(draftQuery, draftKeyword);
+    const normalizedQuery = draftQuery.trim();
+
+    if (!normalizedQuery) {
+      setDraftQuery('');
+      onSearchSubmit('', 'all');
+      setActivePanel(null);
+      return;
+    }
+
+    onSearchSubmit(normalizedQuery, 'all');
     setActivePanel(null);
   }
 
   function clearQuery() {
     setDraftQuery('');
-    setActivePanel('text');
-  }
-
-  function selectLocation(query: string) {
-    setDraftQuery(query);
-    setDraftKeyword('all');
+    onSearchSubmit('', 'all');
     setActivePanel(null);
-    onSearchSubmit(query, 'all');
   }
 
   return (
     <section className="search-hero compact-search-hero">
       <div className="search-copy centered-copy">
-        <p>여행지와 카테고리를 선택해주세요.</p>
+        <p>여행지를 검색해주세요.</p>
       </div>
 
       <div className="trip-search-shell" ref={searchShellRef}>
@@ -122,8 +111,13 @@ export function GuidebookSearchBar({
             <input
               value={draftQuery}
               onChange={(event) => {
-                setDraftQuery(event.target.value);
+                const nextQuery = event.target.value;
+                setDraftQuery(nextQuery);
                 setActivePanel('text');
+
+                if (nextQuery.trim().length === 0) {
+                  onSearchSubmit('', 'all');
+                }
               }}
               onFocus={() => setActivePanel('text')}
               placeholder="도시, 국가 검색"
@@ -134,13 +128,6 @@ export function GuidebookSearchBar({
               </button>
             )}
           </label>
-
-          <button
-            className={`trip-search-segment keyword-placeholder-segment ${activePanel === 'keyword' ? 'active' : ''}`}
-            type="button"
-            onClick={() => setActivePanel(activePanel === 'keyword' ? null : 'keyword')}>
-            <strong>{draftKeyword === 'all' ? '카테고리 검색' : selectedKeywordLabel}</strong>
-          </button>
 
           <button className="trip-search-button" type="button" onClick={submitSearch}>
             <SearchIcon />
@@ -161,6 +148,7 @@ export function GuidebookSearchBar({
                   onClick={() => {
                     setDraftQuery(suggestion.label);
                     setActivePanel(null);
+                    onSearchSubmit(suggestion.label, 'all');
                   }}>
                   <span>⌖</span>
                   <div>
@@ -170,40 +158,6 @@ export function GuidebookSearchBar({
                 </button>
               ))
             )}
-          </div>
-        )}
-
-        {activePanel === 'keyword' && (
-          <div className="search-popover keyword-popover location-popover">
-            <div className="location-category-list">
-              <div className="location-country-tabs" role="tablist" aria-label="국가 선택">
-                {locationCategories.map((country) => (
-                  <button
-                    className={selectedCountry?.id === country.id ? 'selected' : ''}
-                    key={country.id}
-                    type="button"
-                    role="tab"
-                    aria-selected={selectedCountry?.id === country.id}
-                    onClick={() => setSelectedCountryId(country.id)}>
-                    {country.label}
-                  </button>
-                ))}
-              </div>
-
-              {selectedCountry && (
-                <section className="location-category-group">
-                  <strong>{selectedCountry.label}</strong>
-                  <div>
-                    {selectedCountry.cities.map((city) => (
-                      <button key={city.id} type="button" onClick={() => selectLocation(city.label)}>
-                        <strong>{city.label}</strong>
-                        <span>{city.description}</span>
-                      </button>
-                    ))}
-                  </div>
-                </section>
-              )}
-            </div>
           </div>
         )}
       </div>

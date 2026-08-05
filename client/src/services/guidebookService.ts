@@ -38,6 +38,12 @@ export const guidebookService = {
       body: JSON.stringify(payload),
     });
   },
+  updateGuidebook(guidebookId: number, payload: CreateGuidebookPayload) {
+    return request<CreateGuidebookResponse>(`/guidebooks/${guidebookId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    });
+  },
   deleteGuidebook(guidebookId: number) {
     return request<void>(`/guidebooks/${guidebookId}`, {
       method: 'DELETE',
@@ -46,7 +52,14 @@ export const guidebookService = {
   getOrders() {
     return request<Order[]>('/orders');
   },
-  createOrder(payload: { consumerId: number; guidebookId: number; selectedLayoutType: string; shippingMemo: string }) {
+  createOrder(payload: {
+    consumerId: number;
+    guidebookId: number;
+    quantity: number;
+    selectedLayoutType: string;
+    shippingMemo: string;
+    totalPrice: number;
+  }) {
     return request<Order>('/orders', {
       method: 'POST',
       body: JSON.stringify(payload),

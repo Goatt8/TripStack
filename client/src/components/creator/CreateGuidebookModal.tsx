@@ -5,6 +5,8 @@ import { useState, type DragEvent, type PointerEvent } from 'react';
 import type { GuidebookRoutePoint } from '@/types';
 
 type CreateGuidebookModalProps = {
+  initialDraft?: CreateGuidebookDraft;
+  mode?: 'create' | 'edit';
   onCreate: (guidebook: CreateGuidebookDraft) => Promise<void> | void;
   onClose: () => void;
 };
@@ -58,14 +60,24 @@ function clampPercent(value: number) {
   return Math.min(100, Math.max(0, value));
 }
 
-export function CreateGuidebookModal({ onClose, onCreate }: CreateGuidebookModalProps) {
+export function CreateGuidebookModal({ initialDraft, mode = 'create', onClose, onCreate }: CreateGuidebookModalProps) {
   const [videoUrl, setVideoUrl] = useState('');
-  const [selectedLocation, setSelectedLocation] = useState(locationOptions[1]);
+  const initialLocation = initialDraft
+    ? { country: initialDraft.country, city: initialDraft.region, mapImageUrl: initialDraft.mapImageUrl }
+    : locationOptions[1];
+  const availableLocationOptions = locationOptions.some((option) => (
+    option.country === initialLocation.country && option.city === initialLocation.city
+  ))
+    ? locationOptions
+    : [initialLocation, ...locationOptions];
+  const [selectedLocation, setSelectedLocation] = useState(initialLocation);
   const [activePointId, setActivePointId] = useState<number | null>(null);
-  const [detailBlocks, setDetailBlocks] = useState<CreateGuidebookBlockDraft[]>([createEmptyDetailBlock()]);
+  const [detailBlocks, setDetailBlocks] = useState<CreateGuidebookBlockDraft[]>(
+    initialDraft?.blocks.length ? initialDraft.blocks : [createEmptyDetailBlock()],
+  );
   const [isCreating, setIsCreating] = useState(false);
   const [validationMessage, setValidationMessage] = useState('');
-  const [routePoints, setRoutePoints] = useState(initialRoutePoints);
+  const [routePoints, setRoutePoints] = useState(initialDraft?.routePoints.length ? initialDraft.routePoints : initialRoutePoints);
 
   function readVideo() {
     setDetailBlocks((previous) => previous.map((block, index) => (
@@ -177,8 +189,8 @@ export function CreateGuidebookModal({ onClose, onCreate }: CreateGuidebookModal
         <header className="create-guidebook-header">
           <div>
             <span>Create guidebook</span>
-            <h2>가이드북 생성</h2>
-            <p>영상 링크와 위치 정보를 먼저 정리합니다.</p>
+            <h2>{mode === 'edit' ? '가이드북 수정' : '가이드북 생성'}</h2>
+            <p>{mode === 'edit' ? '기존 가이드북 정보를 수정합니다.' : '영상 링크와 위치 정보를 먼저 정리합니다.'}</p>
           </div>
           <button type="button" aria-label="가이드북 생성 닫기" onClick={onClose}>
             ×
@@ -206,10 +218,10 @@ export function CreateGuidebookModal({ onClose, onCreate }: CreateGuidebookModal
                 <select
                   value={selectedLocation.country}
                   onChange={(event) => {
-                    const nextLocation = locationOptions.find((option) => option.country === event.target.value) ?? locationOptions[0];
+                    const nextLocation = availableLocationOptions.find((option) => option.country === event.target.value) ?? availableLocationOptions[0];
                     setSelectedLocation(nextLocation);
                   }}>
-                  {[...new Set(locationOptions.map((option) => option.country))].map((country) => (
+                  {[...new Set(availableLocationOptions.map((option) => option.country))].map((country) => (
                     <option value={country} key={country}>{country}</option>
                   ))}
                 </select>
@@ -218,10 +230,10 @@ export function CreateGuidebookModal({ onClose, onCreate }: CreateGuidebookModal
                 <select
                   value={selectedLocation.city}
                   onChange={(event) => {
-                    const nextLocation = locationOptions.find((option) => option.city === event.target.value) ?? selectedLocation;
+                    const nextLocation = availableLocationOptions.find((option) => option.city === event.target.value) ?? selectedLocation;
                     setSelectedLocation(nextLocation);
                   }}>
-                  {locationOptions
+                  {availableLocationOptions
                     .filter((option) => option.country === selectedLocation.country)
                     .map((option) => (
                       <option value={option.city} key={option.city}>{option.city}</option>
@@ -349,7 +361,7 @@ export function CreateGuidebookModal({ onClose, onCreate }: CreateGuidebookModal
           <div>
             <button type="button" onClick={onClose}>취소</button>
             <button type="button" className="primary" onClick={() => void createGuidebook()} disabled={isCreating}>
-              {isCreating ? '생성 중' : '생성'}
+              {isCreating ? (mode === 'edit' ? '수정 중' : '생성 중') : (mode === 'edit' ? '수정' : '생성')}
             </button>
           </div>
         </footer>

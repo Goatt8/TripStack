@@ -289,6 +289,18 @@ app.get('/api/print-cart', (request, response) => {
   response.json(getPrintCartItems(userId));
 });
 
+app.delete('/api/print-cart', (request, response) => {
+  const userId = Number(request.query.userId);
+
+  if (!Number.isInteger(userId)) {
+    response.status(400).json({ message: 'userId is required.' });
+    return;
+  }
+
+  db.prepare('DELETE FROM print_cart_items WHERE user_id = ?').run(userId);
+  response.status(204).send();
+});
+
 app.post('/api/print-cart', (request, response) => {
   const { guidebookId, quantity, userId } = request.body as {
     guidebookId?: number;
@@ -471,6 +483,127 @@ app.post('/api/guidebooks', (request, response) => {
   response.status(201).json({ guidebook, blocks: createdBlocks });
 });
 
+app.patch('/api/guidebooks/:id', (request, response) => {
+  const guidebookId = Number(request.params.id);
+  const {
+    blocks,
+    country,
+    coverImageUrl,
+    creatorId,
+    mapImageUrl,
+    region,
+    routePoints,
+    title,
+  } = request.body as CreateGuidebookBody;
+
+  if (!Number.isInteger(guidebookId)) {
+    response.status(400).json({ message: 'Valid guidebook id is required.' });
+    return;
+  }
+
+  if (!creatorId || !title || !country || !region || !coverImageUrl || !mapImageUrl) {
+    response.status(400).json({
+      message: 'creatorId, title, country, region, coverImageUrl, mapImageUrl are required.',
+    });
+    return;
+  }
+
+  const guidebook = db.prepare('SELECT id, creator_id AS creatorId FROM guidebooks WHERE id = ?').get(guidebookId) as {
+    creatorId: number;
+    id: number;
+  } | undefined;
+
+  if (!guidebook) {
+    response.status(404).json({ message: 'Guidebook not found.' });
+    return;
+  }
+
+  if (guidebook.creatorId !== creatorId) {
+    response.status(403).json({ message: 'Only the guidebook creator can update this guidebook.' });
+    return;
+  }
+
+  const transaction = db.transaction(() => {
+    db.prepare(`
+      UPDATE guidebooks
+      SET title = @title,
+          country = @country,
+          region = @region,
+          cover_image_url = @coverImageUrl,
+          map_image_url = @mapImageUrl
+      WHERE id = @guidebookId
+    `).run({
+      country,
+      coverImageUrl,
+      guidebookId,
+      mapImageUrl,
+      region,
+      title,
+    });
+
+    db.prepare('DELETE FROM guidebook_blocks WHERE guidebook_id = ?').run(guidebookId);
+    db.prepare('DELETE FROM guidebook_route_points WHERE guidebook_id = ?').run(guidebookId);
+
+    const normalizedBlocks = blocks && blocks.length > 0 ? blocks : [
+      {
+        placeName: `${region} 주요 장면`,
+        content: '수정 모달에서 입력한 가이드북 상세 설명입니다.',
+        imageUrl: coverImageUrl,
+      },
+    ];
+    const insertBlock = db.prepare(`
+      INSERT INTO guidebook_blocks (guidebook_id, step_order, place_name, content, image_url)
+      VALUES (@guidebookId, @stepOrder, @placeName, @content, @imageUrl)
+    `);
+
+    normalizedBlocks.forEach((item, index) => {
+      insertBlock.run({
+        guidebookId,
+        stepOrder: index + 1,
+        placeName: item.placeName?.trim() || `${region} 주요 장면 ${index + 1}`,
+        content: item.content?.trim() || '수정 모달에서 입력한 가이드북 상세 설명입니다.',
+        imageUrl: item.imageUrl?.trim() || coverImageUrl,
+      });
+    });
+
+    const insertRoutePoint = db.prepare(`
+      INSERT INTO guidebook_route_points (guidebook_id, point_order, title, x, y)
+      VALUES (@guidebookId, @pointOrder, @title, @x, @y)
+    `);
+
+    (routePoints && routePoints.length > 0 ? routePoints : [
+      { pointOrder: 1, title: '포인트 1', x: 24, y: 32 },
+      { pointOrder: 2, title: '포인트 2', x: 66, y: 58 },
+    ]).forEach((point, index) => {
+      insertRoutePoint.run({
+        guidebookId,
+        pointOrder: point.pointOrder ?? index + 1,
+        title: point.title?.trim() || `포인트 ${index + 1}`,
+        x: typeof point.x === 'number' ? point.x : 50,
+        y: typeof point.y === 'number' ? point.y : 50,
+      });
+    });
+  });
+
+  transaction();
+
+  const updatedGuidebook = getGuidebookById(guidebookId);
+  const updatedBlocks = db.prepare(`
+    SELECT
+      id,
+      guidebook_id AS guidebookId,
+      step_order AS stepOrder,
+      place_name AS placeName,
+      content,
+      image_url AS imageUrl
+    FROM guidebook_blocks
+    WHERE guidebook_id = ?
+    ORDER BY step_order ASC
+  `).all(guidebookId) as GuidebookBlockRow[];
+
+  response.json({ guidebook: updatedGuidebook, blocks: updatedBlocks });
+});
+
 app.delete('/api/guidebooks/:id', (request, response) => {
   const guidebookId = Number(request.params.id);
 
@@ -502,16 +635,23 @@ app.get('/api/orders', (_request, response) => {
     SELECT
       orders.id,
       orders.consumer_id AS consumerId,
-      users.username AS consumerName,
+      consumers.username AS consumerName,
+      guidebooks.creator_id AS creatorId,
+      creators.username AS creatorName,
       orders.guidebook_id AS guidebookId,
       guidebooks.title AS guidebookTitle,
+      guidebooks.country,
+      guidebooks.region,
+      orders.quantity,
+      orders.total_price AS totalPrice,
       custom_prints.selected_layout_type AS selectedLayoutType,
       orders.status,
       orders.shipping_memo AS shippingMemo,
       orders.created_at AS createdAt
     FROM orders
-    JOIN users ON users.id = orders.consumer_id
+    JOIN users AS consumers ON consumers.id = orders.consumer_id
     JOIN guidebooks ON guidebooks.id = orders.guidebook_id
+    JOIN users AS creators ON creators.id = guidebooks.creator_id
     LEFT JOIN custom_prints ON custom_prints.id = orders.custom_print_id
     ORDER BY orders.created_at DESC
   `).all();
@@ -520,15 +660,25 @@ app.get('/api/orders', (_request, response) => {
 });
 
 app.post('/api/orders', (request, response) => {
-  const { consumerId, guidebookId, selectedLayoutType, shippingMemo } = request.body as {
+  const { consumerId, guidebookId, quantity, selectedLayoutType, shippingMemo, totalPrice } = request.body as {
     consumerId?: number;
     guidebookId?: number;
+    quantity?: number;
     selectedLayoutType?: string;
     shippingMemo?: string;
+    totalPrice?: number;
   };
 
   if (!consumerId || !guidebookId || !selectedLayoutType) {
     response.status(400).json({ message: 'consumerId, guidebookId, selectedLayoutType are required.' });
+    return;
+  }
+
+  const normalizedQuantity = Math.max(1, quantity ?? 1);
+  const guidebook = db.prepare('SELECT price FROM guidebooks WHERE id = ?').get(guidebookId) as { price: number } | undefined;
+
+  if (!guidebook) {
+    response.status(404).json({ message: 'Guidebook not found.' });
     return;
   }
 
@@ -539,11 +689,18 @@ app.post('/api/orders', (request, response) => {
     `).run(consumerId, guidebookId, selectedLayoutType);
 
     const order = db.prepare(`
-      INSERT INTO orders (consumer_id, guidebook_id, custom_print_id, status, shipping_memo)
-      VALUES (?, ?, ?, 'pending', ?)
-    `).run(consumerId, guidebookId, customPrint.lastInsertRowid, shippingMemo ?? '');
+      INSERT INTO orders (consumer_id, guidebook_id, custom_print_id, quantity, total_price, status, shipping_memo)
+      VALUES (?, ?, ?, ?, ?, 'pending', ?)
+    `).run(
+      consumerId,
+      guidebookId,
+      customPrint.lastInsertRowid,
+      normalizedQuantity,
+      totalPrice ?? guidebook.price * normalizedQuantity,
+      shippingMemo ?? '',
+    );
 
-    db.prepare('UPDATE guidebooks SET print_count = print_count + 1 WHERE id = ?').run(guidebookId);
+    db.prepare('UPDATE guidebooks SET print_count = print_count + ? WHERE id = ?').run(normalizedQuantity, guidebookId);
     return order.lastInsertRowid;
   });
 
@@ -552,16 +709,23 @@ app.post('/api/orders', (request, response) => {
     SELECT
       orders.id,
       orders.consumer_id AS consumerId,
-      users.username AS consumerName,
+      consumers.username AS consumerName,
+      guidebooks.creator_id AS creatorId,
+      creators.username AS creatorName,
       orders.guidebook_id AS guidebookId,
       guidebooks.title AS guidebookTitle,
+      guidebooks.country,
+      guidebooks.region,
+      orders.quantity,
+      orders.total_price AS totalPrice,
       custom_prints.selected_layout_type AS selectedLayoutType,
       orders.status,
       orders.shipping_memo AS shippingMemo,
       orders.created_at AS createdAt
     FROM orders
-    JOIN users ON users.id = orders.consumer_id
+    JOIN users AS consumers ON consumers.id = orders.consumer_id
     JOIN guidebooks ON guidebooks.id = orders.guidebook_id
+    JOIN users AS creators ON creators.id = guidebooks.creator_id
     LEFT JOIN custom_prints ON custom_prints.id = orders.custom_print_id
     WHERE orders.id = ?
   `).get(orderId);
@@ -583,16 +747,23 @@ app.patch('/api/orders/:id/status', (request, response) => {
     SELECT
       orders.id,
       orders.consumer_id AS consumerId,
-      users.username AS consumerName,
+      consumers.username AS consumerName,
+      guidebooks.creator_id AS creatorId,
+      creators.username AS creatorName,
       orders.guidebook_id AS guidebookId,
       guidebooks.title AS guidebookTitle,
+      guidebooks.country,
+      guidebooks.region,
+      orders.quantity,
+      orders.total_price AS totalPrice,
       custom_prints.selected_layout_type AS selectedLayoutType,
       orders.status,
       orders.shipping_memo AS shippingMemo,
       orders.created_at AS createdAt
     FROM orders
-    JOIN users ON users.id = orders.consumer_id
+    JOIN users AS consumers ON consumers.id = orders.consumer_id
     JOIN guidebooks ON guidebooks.id = orders.guidebook_id
+    JOIN users AS creators ON creators.id = guidebooks.creator_id
     LEFT JOIN custom_prints ON custom_prints.id = orders.custom_print_id
     WHERE orders.id = ?
   `).get(request.params.id);

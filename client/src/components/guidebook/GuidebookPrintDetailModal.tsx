@@ -13,7 +13,6 @@ type GuidebookPrintDetailModalProps = {
   onClose: () => void;
   onDelete?: () => Promise<void> | void;
   onEdit?: () => void;
-  onHide?: () => void;
   showBasketAction?: boolean;
 };
 
@@ -33,7 +32,6 @@ export function GuidebookPrintDetailModal({
   onClose,
   onDelete,
   onEdit,
-  onHide,
   showBasketAction = false,
 }: GuidebookPrintDetailModalProps) {
   const [isManageMenuOpen, setIsManageMenuOpen] = useState(false);
@@ -92,7 +90,6 @@ export function GuidebookPrintDetailModal({
                 <div className="print-detail-manage-menu" role="menu">
                   <button type="button" role="menuitem" onClick={onDelete} disabled={!onDelete}>게시물 삭제</button>
                   <button type="button" role="menuitem" onClick={onEdit} disabled={!onEdit}>수정</button>
-                  <button type="button" role="menuitem" onClick={onHide} disabled={!onHide}>숨기기</button>
                 </div>
               )}
             </div>

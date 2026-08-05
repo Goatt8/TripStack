@@ -9,6 +9,7 @@ type PrintCartStore = {
   items: PrintCartItem[];
   loading: boolean;
   addGuidebook: (guidebookId: number) => Promise<void>;
+  clearCart: () => Promise<void>;
   loadCart: () => Promise<void>;
   removeGuidebook: (guidebookId: number) => Promise<void>;
   updateQuantity: (guidebookId: number, quantity: number) => Promise<void>;
@@ -40,6 +41,12 @@ export const usePrintCartStore = create<PrintCartStore>((set, get) => ({
     set({ error: '' });
     await cartService.addItem(guidebookId);
     await get().loadCart();
+  },
+
+  async clearCart() {
+    set({ error: '' });
+    await cartService.clearItems();
+    set({ guidebookIds: [], items: [] });
   },
 
   async removeGuidebook(guidebookId) {

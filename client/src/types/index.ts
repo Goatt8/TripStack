@@ -53,8 +53,14 @@ export type Order = {
   id: number;
   consumerId: number;
   consumerName: string;
+  creatorId: number;
+  creatorName: string;
   guidebookId: number;
   guidebookTitle: string;
+  country: string;
+  region: string;
+  quantity: number;
+  totalPrice: number;
   selectedLayoutType: string;
   status: OrderStatus;
   shippingMemo: string;

@@ -109,6 +109,8 @@ export function initializeDatabase() {
       consumer_id INTEGER NOT NULL,
       guidebook_id INTEGER NOT NULL,
       custom_print_id INTEGER,
+      quantity INTEGER NOT NULL DEFAULT 1 CHECK(quantity > 0),
+      total_price INTEGER NOT NULL DEFAULT 0,
       status TEXT NOT NULL CHECK(status IN ('pending', 'processing', 'completed')) DEFAULT 'pending',
       shipping_memo TEXT NOT NULL DEFAULT '',
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -132,6 +134,16 @@ export function initializeDatabase() {
     db.prepare('ALTER TABLE guidebooks ADD COLUMN price INTEGER NOT NULL DEFAULT 12800').run();
   }
 
+  const orderColumns = db.prepare('PRAGMA table_info(orders)').all() as { name: string }[];
+
+  if (!orderColumns.some((column) => column.name === 'quantity')) {
+    db.prepare('ALTER TABLE orders ADD COLUMN quantity INTEGER NOT NULL DEFAULT 1').run();
+  }
+
+  if (!orderColumns.some((column) => column.name === 'total_price')) {
+    db.prepare('ALTER TABLE orders ADD COLUMN total_price INTEGER NOT NULL DEFAULT 0').run();
+  }
+
   seedGuidebookPrices();
 
   const userCount = db.prepare('SELECT COUNT(*) AS count FROM users').get() as { count: number };
@@ -139,11 +151,67 @@ export function initializeDatabase() {
   if (userCount.count === 0) {
     seedDatabase();
   }
+
+  seedDemoSalesOrders();
 }
 
 function seedGuidebookPrices() {
   const updatePrice = db.prepare('UPDATE guidebooks SET price = @price WHERE title = @title');
   seedGuidebooks.forEach(({ price, title }) => updatePrice.run({ price, title }));
+}
+
+function seedDemoSalesOrders() {
+  const guidebook = db.prepare(`
+    SELECT id, price
+    FROM guidebooks
+    WHERE creator_id = 8
+      AND title = '수박이와 가는 프랑스'
+  `).get() as { id: number; price: number } | undefined;
+
+  if (!guidebook) {
+    return;
+  }
+
+  const consumerSeeds = [
+    { username: 'traveler.min', quantity: 2, status: 'pending', memo: 'demo-sales-order-1' },
+    { username: 'slow.route', quantity: 1, status: 'processing', memo: 'demo-sales-order-2' },
+    { username: 'paper.user', quantity: 4, status: 'completed', memo: 'demo-sales-order-3' },
+  ];
+
+  const findUser = db.prepare('SELECT id FROM users WHERE username = ?');
+  const insertUser = db.prepare(`
+    INSERT INTO users (username, role, bio, avatar_url, follower_count, trust_score)
+    VALUES (@username, 'consumer', 'TripStack 인쇄 주문 데모 사용자입니다.', '', 0, 0)
+  `);
+  const findOrder = db.prepare('SELECT id FROM orders WHERE shipping_memo = ?');
+  const insertCustomPrint = db.prepare(`
+    INSERT INTO custom_prints (consumer_id, guidebook_id, selected_layout_type)
+    VALUES (@consumerId, @guidebookId, '기본 인쇄형')
+  `);
+  const insertOrder = db.prepare(`
+    INSERT INTO orders (consumer_id, guidebook_id, custom_print_id, quantity, total_price, status, shipping_memo)
+    VALUES (@consumerId, @guidebookId, @customPrintId, @quantity, @totalPrice, @status, @shippingMemo)
+  `);
+
+  consumerSeeds.forEach((seed) => {
+    if (findOrder.get(seed.memo)) {
+      return;
+    }
+
+    const existingUser = findUser.get(seed.username) as { id: number } | undefined;
+    const consumerId = existingUser?.id ?? Number(insertUser.run({ username: seed.username }).lastInsertRowid);
+    const customPrint = insertCustomPrint.run({ consumerId, guidebookId: guidebook.id });
+
+    insertOrder.run({
+      consumerId,
+      customPrintId: customPrint.lastInsertRowid,
+      guidebookId: guidebook.id,
+      quantity: seed.quantity,
+      shippingMemo: seed.memo,
+      status: seed.status,
+      totalPrice: guidebook.price * seed.quantity,
+    });
+  });
 }
 
 function seedDatabase() {

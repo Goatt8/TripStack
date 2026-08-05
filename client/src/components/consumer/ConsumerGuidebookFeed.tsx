@@ -108,9 +108,7 @@ export function ConsumerGuidebookFeed(props: ConsumerGuidebookFeedProps) {
         searchContent={
           <GuidebookSearchBar
             guidebooks={props.guidebooks}
-            searchKeywords={props.searchKeywords}
             searchQuery={props.searchQuery}
-            selectedKeyword={props.selectedKeyword}
             onSearchSubmit={props.onSearchSubmit}
           />
         }

@@ -84,7 +84,7 @@
 }
 
 .consumer-feed-search .trip-search-bar {
-  grid-template-columns: minmax(120px, 1fr) minmax(108px, 0.72fr) 46px;
+  grid-template-columns: minmax(120px, 1fr) 46px;
   box-shadow: none;
 }
 
@@ -95,10 +95,6 @@
 
 .consumer-feed-search .trip-search-segment input {
   width: auto;
-  font-size: 13px;
-}
-
-.consumer-feed-search .keyword-placeholder-segment strong {
   font-size: 13px;
 }
 

@@ -71,10 +71,19 @@
   font-weight: 900;
 }
 
-.print-cart-table-toolbar strong {
-  color: #667085;
+.print-cart-table-toolbar button {
+  border: 1px solid #e4e7ec;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #475467;
+  padding: 8px 12px;
   font-size: 12px;
   font-weight: 900;
+}
+
+.print-cart-table-toolbar button:hover {
+  border-color: #ef4444;
+  color: #ef4444;
 }
 
 .print-cart-list {
@@ -258,6 +267,120 @@
   font-weight: 900;
 }
 
+.sales-order-panel {
+  display: grid;
+  gap: 16px;
+}
+
+.sales-order-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  border: 1px solid #e4e7ec;
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 18px 20px;
+}
+
+.sales-order-summary div {
+  display: grid;
+  gap: 4px;
+}
+
+.sales-order-summary span {
+  color: #667085;
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.sales-order-summary strong {
+  color: #101828;
+  font-size: 20px;
+  font-weight: 900;
+}
+
+.sales-order-summary p {
+  margin: 0;
+  color: #2563eb;
+  font-size: 15px;
+  font-weight: 900;
+}
+
+.sales-order-table-wrap {
+  overflow-x: auto;
+  border: 1px solid #e4e7ec;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.sales-order-table {
+  width: 100%;
+  min-width: 820px;
+  border-collapse: collapse;
+}
+
+.sales-order-table th,
+.sales-order-table td {
+  border-bottom: 1px solid #eef2f7;
+  padding: 15px 16px;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.sales-order-table th {
+  color: #667085;
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.sales-order-table td {
+  color: #101828;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.sales-order-table td span {
+  display: block;
+  margin-top: 3px;
+  color: #667085;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.sales-order-buyer-id {
+  color: #101828;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.sales-order-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.sales-order-status {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  background: #eef2ff;
+  color: #2563eb;
+  padding: 6px 10px;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.sales-order-status.processing {
+  background: #fff7ed;
+  color: #ea580c;
+}
+
+.sales-order-status.completed {
+  background: #ecfdf3;
+  color: #079455;
+}
+
 @media (max-width: 900px) {
   .print-cart-view {
     width: min(100% - 32px, 720px);
@@ -320,5 +443,10 @@
 
   .print-cart-remove {
     text-align: center;
+  }
+
+  .sales-order-summary {
+    align-items: start;
+    flex-direction: column;
   }
 }

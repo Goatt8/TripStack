@@ -8,6 +8,11 @@ export const cartService = {
   getItems() {
     return request<PrintCartItem[]>(`/print-cart?userId=${currentUserId}`);
   },
+  clearItems() {
+    return request<void>(`/print-cart?userId=${currentUserId}`, {
+      method: 'DELETE',
+    });
+  },
   addItem(guidebookId: number) {
     return request<PrintCartItem>('/print-cart', {
       method: 'POST',

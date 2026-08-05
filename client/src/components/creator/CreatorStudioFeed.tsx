@@ -9,9 +9,7 @@ import { currentAccount } from '@/features/account/currentAccount';
 import { usePrintCartStore } from '@/features/basket/printCartStore';
 import {
   addDeletedGuidebookId,
-  addHiddenGuidebookId,
   readDeletedGuidebookIds,
-  readHiddenGuidebookIds,
 } from '@/features/creator/creatorGuidebookManage';
 import {
   INTERESTED_CREATOR_EVENT_NAME,
@@ -46,7 +44,6 @@ function HeartIcon() {
 export function CreatorStudioFeed({ creators, guidebooks, viewedCreatorId = currentAccount.creatorId }: CreatorStudioFeedProps) {
   const [activeTab, setActiveTab] = useState<'mine' | 'saved'>('mine');
   const [deletedGuidebookIds, setDeletedGuidebookIds] = useState<number[]>([]);
-  const [hiddenGuidebookIds, setHiddenGuidebookIds] = useState<number[]>([]);
   const [selectedGuidebook, setSelectedGuidebook] = useState<Guidebook | null>(null);
   const [selectedBlocks, setSelectedBlocks] = useState<GuidebookBlock[]>([]);
   const [isCreateGuidebookOpen, setIsCreateGuidebookOpen] = useState(false);
@@ -54,6 +51,10 @@ export function CreatorStudioFeed({ creators, guidebooks, viewedCreatorId = curr
   const [interestedCreatorIds, setInterestedCreatorIds] = useState<number[]>([]);
   const [createdGuidebooks, setCreatedGuidebooks] = useState<Guidebook[]>([]);
   const [createdGuidebookBlocks, setCreatedGuidebookBlocks] = useState<Record<number, GuidebookBlock[]>>({});
+  const [editingGuidebook, setEditingGuidebook] = useState<Guidebook | null>(null);
+  const [editingBlocks, setEditingBlocks] = useState<GuidebookBlock[]>([]);
+  const [updatedGuidebooks, setUpdatedGuidebooks] = useState<Record<number, Guidebook>>({});
+  const [updatedGuidebookBlocks, setUpdatedGuidebookBlocks] = useState<Record<number, GuidebookBlock[]>>({});
   const basketGuidebookIds = usePrintCartStore((state) => state.guidebookIds);
   const loadCart = usePrintCartStore((state) => state.loadCart);
   const creator = creators.find((item) => item.id === viewedCreatorId);
@@ -61,7 +62,6 @@ export function CreatorStudioFeed({ creators, guidebooks, viewedCreatorId = curr
 
   useEffect(() => {
     setDeletedGuidebookIds(readDeletedGuidebookIds());
-    setHiddenGuidebookIds(readHiddenGuidebookIds());
     setInterestedCreatorIds(readInterestedCreatorIds());
 
     function syncInterestedCreators(event: Event) {
@@ -93,7 +93,8 @@ export function CreatorStudioFeed({ creators, guidebooks, viewedCreatorId = curr
     return <p className="empty-state">크리에이터 정보를 불러오는 중입니다.</p>;
   }
 
-  const availableGuidebooks = isOwnCreator ? [...createdGuidebooks, ...guidebooks] : guidebooks;
+  const availableGuidebooks = (isOwnCreator ? [...createdGuidebooks, ...guidebooks] : guidebooks)
+    .map((guidebook) => updatedGuidebooks[guidebook.id] ?? guidebook);
   const creatorGuidebooks = availableGuidebooks.filter((guidebook) => {
     if (guidebook.creatorId !== creator.id) {
       return false;
@@ -103,7 +104,7 @@ export function CreatorStudioFeed({ creators, guidebooks, viewedCreatorId = curr
       return true;
     }
 
-    return !deletedGuidebookIds.includes(guidebook.id) && !hiddenGuidebookIds.includes(guidebook.id);
+    return !deletedGuidebookIds.includes(guidebook.id);
   });
   const savedGuidebooks = isOwnCreator
     ? availableGuidebooks.filter((guidebook) => guidebook.creatorId !== creator.id && basketGuidebookIds.includes(guidebook.id))
@@ -118,8 +119,10 @@ export function CreatorStudioFeed({ creators, guidebooks, viewedCreatorId = curr
     setSelectedGuidebook(guidebook);
     setSelectedBlocks([]);
 
-    if (createdGuidebookBlocks[guidebook.id]) {
-      setSelectedBlocks(createdGuidebookBlocks[guidebook.id]);
+    const localBlocks = updatedGuidebookBlocks[guidebook.id] ?? createdGuidebookBlocks[guidebook.id];
+
+    if (localBlocks) {
+      setSelectedBlocks(localBlocks);
       return;
     }
 
@@ -127,6 +130,8 @@ export function CreatorStudioFeed({ creators, guidebooks, viewedCreatorId = curr
   }
 
   function createGuidebook() {
+    setEditingGuidebook(null);
+    setEditingBlocks([]);
     setIsCreateGuidebookOpen(true);
   }
 
@@ -150,18 +155,19 @@ export function CreatorStudioFeed({ creators, guidebooks, viewedCreatorId = curr
     closePrintDetail();
   }
 
-  function editSelectedGuidebook() {
-    closePrintDetail();
-    setIsCreateGuidebookOpen(true);
-  }
-
-  function hideSelectedGuidebook() {
+  async function editSelectedGuidebook() {
     if (!selectedGuidebook) {
       return;
     }
 
-    setHiddenGuidebookIds(addHiddenGuidebookId(selectedGuidebook.id));
+    const blocks = selectedBlocks.length > 0
+      ? selectedBlocks
+      : await guidebookService.getGuidebookBlocks(selectedGuidebook.id);
+
+    setEditingGuidebook(selectedGuidebook);
+    setEditingBlocks(blocks);
     closePrintDetail();
+    setIsCreateGuidebookOpen(true);
   }
 
   function toggleViewedCreatorInterest() {
@@ -174,6 +180,40 @@ export function CreatorStudioFeed({ creators, guidebooks, viewedCreatorId = curr
 
   async function createGuidebookFromDraft(draft: CreateGuidebookDraft) {
     if (!creator) {
+      return;
+    }
+
+    if (editingGuidebook) {
+      const updated = await guidebookService.updateGuidebook(editingGuidebook.id, {
+        creatorId: creator.id,
+        title: draft.title,
+        country: draft.country,
+        region: draft.region,
+        coverImageUrl: draft.coverImageUrl,
+        mapImageUrl: draft.mapImageUrl,
+        routePoints: draft.routePoints.map((point) => ({
+          pointOrder: point.pointOrder,
+          title: point.title,
+          x: point.x,
+          y: point.y,
+        })),
+        blocks: draft.blocks.map((block) => ({
+          placeName: block.title,
+          content: block.content,
+          imageUrl: block.imageUrl,
+        })),
+      });
+
+      setUpdatedGuidebooks((previous) => ({ ...previous, [updated.guidebook.id]: updated.guidebook }));
+      setUpdatedGuidebookBlocks((previous) => ({ ...previous, [updated.guidebook.id]: updated.blocks }));
+      setCreatedGuidebooks((previous) => previous.map((guidebook) => (
+        guidebook.id === updated.guidebook.id ? updated.guidebook : guidebook
+      )));
+      setCreatedGuidebookBlocks((previous) => ({ ...previous, [updated.guidebook.id]: updated.blocks }));
+      setEditingGuidebook(null);
+      setEditingBlocks([]);
+      setActiveTab('mine');
+      setIsCreateGuidebookOpen(false);
       return;
     }
 
@@ -201,6 +241,25 @@ export function CreatorStudioFeed({ creators, guidebooks, viewedCreatorId = curr
     setCreatedGuidebookBlocks((previous) => ({ ...previous, [created.guidebook.id]: created.blocks }));
     setActiveTab('mine');
     setIsCreateGuidebookOpen(false);
+  }
+
+  function createEditingDraft(guidebook: Guidebook, blocks: GuidebookBlock[]): CreateGuidebookDraft {
+    return {
+      blocks: blocks.map((block) => ({
+        content: block.content,
+        id: block.id,
+        imageName: '',
+        imageUrl: block.imageUrl,
+        subtitle: guidebook.region,
+        title: block.placeName,
+      })),
+      country: guidebook.country,
+      coverImageUrl: guidebook.coverImageUrl,
+      mapImageUrl: guidebook.mapImageUrl,
+      region: guidebook.region,
+      routePoints: guidebook.routePoints,
+      title: guidebook.title,
+    };
   }
 
   return (
@@ -305,14 +364,22 @@ export function CreatorStudioFeed({ creators, guidebooks, viewedCreatorId = curr
           guidebook={selectedGuidebook}
           onClose={closePrintDetail}
           onDelete={deleteSelectedGuidebook}
-          onEdit={editSelectedGuidebook}
-          onHide={hideSelectedGuidebook}
+          onEdit={() => void editSelectedGuidebook()}
           showBasketAction={selectedGuidebook.creatorId !== currentAccount.creatorId}
         />
       )}
 
       {isCreateGuidebookOpen && (
-        <CreateGuidebookModal onClose={() => setIsCreateGuidebookOpen(false)} onCreate={createGuidebookFromDraft} />
+        <CreateGuidebookModal
+          initialDraft={editingGuidebook ? createEditingDraft(editingGuidebook, editingBlocks) : undefined}
+          mode={editingGuidebook ? 'edit' : 'create'}
+          onClose={() => {
+            setEditingGuidebook(null);
+            setEditingBlocks([]);
+            setIsCreateGuidebookOpen(false);
+          }}
+          onCreate={createGuidebookFromDraft}
+        />
       )}
 
       <aside className={isInterestPanelOpen ? 'interest-creator-panel open' : 'interest-creator-panel'} aria-label="관심 크리에이터">
