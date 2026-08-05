@@ -107,29 +107,63 @@ _____________________
 ## 4. 사용자 경험(UI/UX) 설계
 
 <table align="center">
-<img width="80%" alt="스크린샷 2026-08-05 오후 12 27 02" src="https://github.com/user-attachments/assets/5c4737bb-be6b-4b70-b56a-fcf44136bd87" />
+   <tr>
+     <td width="100%" align="center">
+<img width="80%" alt="스크린샷 2026-08-05 오후 12 27 02" src="https://github.com/user-attachments/assets/5c4737bb-be6b-4b70-b56a-fcf44136bd87" /><br>
+       <sub><b> 메인화면 개요 </b></sub>
+       </td>
+      </tr>
 </table>
 
 
 <table align="center">
   <tr>
     <td width="33.33%" align="center">
-      <img width="100%" src="https://github.com/user-attachments/assets/a7675b3f-53c2-460d-a394-339fec3d0514" /><br>
-      <sub><b>1. 메인 화면</b></sub>
+      <img width="100%" src="https://github.com/user-attachments/assets/fb2e0137-3fdd-435c-9d20-b0fcd60a1d3b" /><br>
+      <sub><b>1. 메인 화면 (검색 | 가이드북 조회)</b></sub>
     </td>
     <td width="33.33%" align="center">
-      <img width="100%" src="https://github.com/user-attachments/assets/75198cdc-1331-4cf3-9139-028826f786b6" /><br>
+      <img width="100%" src="https://github.com/user-attachments/assets/20420a95-69a1-4195-ba75-b0c7c60b6875" /><br>
       <sub><b>2. 검색</b></sub>
     </td>
     <td width="33.33%" align="center">
-      <img width="100%"  src="https://github.com/user-attachments/assets/37490f22-bfc3-4752-aca3-fcb8f64716d7" /><br>
-      <sub><b>3. 디테일 뷰</b></sub>
+      <img width="100%"  src="https://github.com/user-attachments/assets/604b1995-06e9-42fd-965a-7efd9f9fa82f" /><br>
+      <sub><b>3. 가이드북 상세화면</b></sub>
     </td>
   </tr>
+
+  <tr>
+    <td width="33.33%" align="center">
+      <img width="100%" src="https://github.com/user-attachments/assets/bb76253e-243f-42ac-9c4e-45a5c35db41b" /><br>
+      <sub><b>4. 내 화면 (가이드북 생성 | 관리)</b></sub>
+    </td>
+    <td width="33.33%" align="center">
+      <img width="100%" src="https://github.com/user-attachments/assets/f06d6278-5e8f-448d-9170-d0d2f200d033" /><br>
+      <sub><b>5. 가이드북 생성</b></sub>
+    </td>
+    <td width="33.33%" align="center">
+      <img width="100%"  src="https://github.com/user-attachments/assets/e9cb6350-5965-4aba-b22a-3b57a70bd664" /><br>
+      <sub><b>6. 내 가이드북 삭제 및 수정</b></sub>
+    </td>
+  </tr>
+
+
+  <tr>
+    <td width="33.33%" align="center">
+      <img width="100%" src="https://github.com/user-attachments/assets/46123d4a-dd66-4eb3-8bfd-2957ca369a69" /><br>
+      <sub><b>7. 메인화면 (주문 인쇄 | 관리 조회)</b></sub>
+    </td>
+    <td width="33.33%" align="center">
+      <img width="100%" src="https://github.com/user-attachments/assets/72901931-ad0f-4490-9a36-0d11e4f05eb3" /><br>
+      <sub><b>8. 주문목록 인쇄하기</b></sub>
+    </td>
+    <td width="33.33%" align="center">
+      <img width="100%"  src="https://github.com/user-attachments/assets/910a812c-d589-4f65-b966-998b3056395f" /><br>
+      <sub><b>9. 판매목록 조회하기</b></sub>
+    </td>
+  </tr>
+  
 </table>
-
-
-
 
 
 
@@ -166,6 +200,7 @@ _____________________
 - Backend: Express, TypeScript
 - Database: SQLite, better-sqlite3
 - Runtime: Docker Compose
+- Library: Zustand
 
 ### 선택 이유
 
@@ -175,6 +210,7 @@ _____________________
 - Express는 가이드북, 상세 블록, 장바구니, 주문 API를 단순한 REST 구조로 구현하기에 적합했습니다.
 - SQLite는 별도 DB 서버 설치 없이 Docker 실행 직후 더미데이터와 CRUD 흐름을 확인할 수 있어 과제 환경에 적합했습니다.
 - Docker Compose는 심사자가 프론트엔드와 백엔드를 한 번에 실행할 수 있도록 하기 위해 사용했습니다.
+- Zustand로 인쇄목록상태를 store 상태관리로 중앙집중해 관리를 용이하게 변경했습니다.
 
 ### 주요 디렉터리 구조
 
@@ -230,14 +266,16 @@ _____________________
 
 ### Codex
 
-- 전체적인 맥락 구성: 전체 프로젝트 구조와 화면 컴포넌트 분리 방향을 잡는 데 사용했습니다.
-- 에러 점검 : Next.js 라우팅, Express API, SQLite 모델링, 장바구니 CRUD, 반응형 UI 수정 과정에서 코드 작성과 오류 점검에 활용했습니다.
-- 요구사항 체크 : 과제 요구사항과 현재 구현 상태를 비교하며 부족한 기능과 README 구성을 점검했습니다.
+- 프로젝트 설계 : 전체적인 디렉터리 구조와 컴포넌트 분리, 상태 관리 방식을 함께 설계하며 개발 방향을 구체화했습니다.
+- 코드 구현 및 리팩토링 : Next.js, Express, SQLite 기반의 CRUD 기능 구현과 컴포넌트 리팩토링, 반복 코드 개선에 활용했습니다.
+- 디버깅 : API 연동 오류, 라우팅 문제, 비동기 처리, 타입 오류 등을 분석하고 원인을 빠르게 찾아 수정했습니다.
+- 코드 리뷰 : 작성한 코드를 검토하며 불필요한 로직 제거, 가독성 향상, 유지보수성을 개선했습니다.
+- 과제 요구사항 검증 : 과제 요구사항과 현재 구현 상태를 비교하며 누락된 기능과 README 문서를 점검했습니다.
 
 ### Gemini
 
-- 데이터 생성 : 더미데이터로 사용할 크리에이터 이미지, 가이드북 썸네일, 상세 이미지 생성에 활용했습니다.
-- 여러 분위기의 여행 콘텐츠 샘플을 빠르게 만들어 실제 화면에 적용해보는 방식으로 사용했습니다.
+- 콘텐츠,데이터 제작 : 더미 데이터에 사용할 여행 크리에이터 이미지, 가이드북 썸네일, 상세 이미지를 생성했습니다.
+- 콘텐츠 생성 : 여행 소개 문구, 태그, 설명 등 실제 서비스와 유사한 더미 콘텐츠를 제작했습니다.
 
 ### AI 사용 중 겪은 문제
 
@@ -259,10 +297,9 @@ TripStack은 여행 크리에이터에게는 콘텐츠를 재활용해 가이드
 
 ### 더 시간이 있었다면 추가할 기능
 
-- 실제 주문 생성 후 `pending → processing → completed` 상태를 관리하는 주문 목록 화면
-- 운영자용 주문 관리 페이지
-- 가이드북 생성 시 영상 자막을 분석해 장소와 설명을 자동 추천하는 AI 기능
-- 지도 이미지 위 포인트 저장값을 기반으로 인쇄용 PDF 미리보기 생성
+- 주문을 관리하고 날짜별 시간별로 조회할 수 있는 디테일 기능
+- 가이드북 생성 시 크리에이터 영상 자막과 사진을 분석해 사진, 장소와 설명을 자동 기입해주는 AI 기능
+- 가이드북 생성 시 어떤 컨텐츠가 생성될지 레이아웃을 미리볼 수 있는 미리보기 기능
+- 가이드북 생성 시 레이아웃을 커스텀할 수 있는 커스텀 배치 기능
 - 로그인과 사용자별 관심 목록/장바구니 분리
-- CSV 또는 JSON 주문 데이터 내보내기
 - TanStack Query를 이용해 api를 효율적으로 관리하기
