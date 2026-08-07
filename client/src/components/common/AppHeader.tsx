@@ -15,7 +15,7 @@ export function AppHeader({ compact = false, title }: AppHeaderProps) {
         {!compact && <h1>{title}</h1>}
       </div>
       <div className="topbar-actions">
-        {!compact && <Link className="dark-button" href="/">홈</Link>}
+        {!compact && <Link className="dark-button" href="/consumer">홈</Link>}
         <HeaderPrintButton />
       </div>
     </header>

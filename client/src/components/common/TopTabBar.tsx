@@ -78,7 +78,7 @@ export function TopTabBar({
     <nav className={navClassName} aria-label={isHomeMode ? '컨슈머 주요 탭' : '주요 화면 이동'}>
       <Link
         className={isHomeMode && !isSearchOpen ? 'consumer-feed-tab active' : 'consumer-feed-tab'}
-        href="/"
+        href="/consumer"
         aria-label="홈"
         onClick={onHomeClick}>
         <HomeIcon />

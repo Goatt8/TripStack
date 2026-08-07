@@ -1,0 +1,58 @@
+.login-panel {
+  width: min(100% - 40px, 400px);
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.login-field {
+  display: grid;
+  gap: 5px;
+}
+
+.login-field span {
+  color: #111827;
+  font-weight: 700;
+}
+
+.login-field input {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  font: inherit;
+}
+
+.login-action-row {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+}
+
+.login-submit,
+.signin-submit {
+  flex: 1;
+  margin-top: 10px;
+  padding: 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 800;
+}
+
+.login-submit {
+  border: 0;
+  background: #000;
+  color: #fff;
+}
+
+.signin-submit {
+  border: 1px solid #d1d5db;
+  background: #fff;
+  color: #111827;
+}
