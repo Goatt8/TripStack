@@ -27,6 +27,18 @@ function EditIcon() {
   );
 }
 
+function AdminIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24">
+      <path d="M4 5h16" />
+      <path d="M4 12h16" />
+      <path d="M4 19h16" />
+      <path d="M8 5v14" />
+      <path d="M16 5v14" />
+    </svg>
+  );
+}
+
 function LogoutIcon() {
   return (
     <svg aria-hidden="true" viewBox="0 0 24 24">
@@ -89,6 +101,11 @@ export function HeaderAccountButton() {
     setIsAccountEditOpen(true);
   }
 
+  function openAdminPage() {
+    setIsMenuOpen(false);
+    router.push('/admin');
+  }
+
   function handleLogout() {
     logout();
     resetCart();
@@ -118,6 +135,12 @@ export function HeaderAccountButton() {
               <EditIcon />
               <span>회원정보수정</span>
             </button>
+            {currentUser.isAdmin && (
+              <button type="button" role="menuitem" onClick={openAdminPage}>
+                <AdminIcon />
+                <span>관리자페이지</span>
+              </button>
+            )}
             <button type="button" role="menuitem" onClick={handleLogout}>
               <LogoutIcon />
               <span>로그아웃</span>
