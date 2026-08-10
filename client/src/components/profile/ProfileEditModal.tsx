@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, useState } from 'react';
+import { ChangeEvent, FormEvent, useState } from 'react';
 
 import { useAccountStore } from '@/features/account/accountStore';
 import { authService } from '@/services/authService';
@@ -14,6 +14,7 @@ export function ProfileEditModal({ onClose }: ProfileEditModalProps) {
   const updateCurrentUser = useAccountStore((state) => state.updateCurrentUser);
   const [displayName, setDisplayName] = useState(currentUser?.displayName || currentUser?.username || '');
   const [profileImageUrl, setProfileImageUrl] = useState(currentUser?.profileImageUrl || currentUser?.avatarUrl || '');
+  const [imageLoadFailed, setImageLoadFailed] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -24,6 +25,22 @@ export function ProfileEditModal({ onClose }: ProfileEditModalProps) {
   }
 
   const userId = user.id;
+  const profileInitial = (displayName || user.username || 'T').slice(0, 1).toUpperCase();
+
+  function handleProfileImageChange(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+
+    if (!file) {
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      setProfileImageUrl(String(reader.result ?? ''));
+      setImageLoadFailed(false);
+    };
+    reader.readAsDataURL(file);
+  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -69,12 +86,27 @@ export function ProfileEditModal({ onClose }: ProfileEditModalProps) {
 
         <form className="profile-edit-form" onSubmit={handleSubmit}>
           <div className="profile-edit-preview">
-            <img src={profileImageUrl || user.avatarUrl} alt="프로필 미리보기" />
+            <div className="profile-edit-avatar-preview">
+              {(profileImageUrl || user.avatarUrl) && !imageLoadFailed ? (
+                <img
+                  src={profileImageUrl || user.avatarUrl}
+                  alt=""
+                  onError={() => setImageLoadFailed(true)}
+                />
+              ) : (
+                <span>{profileInitial}</span>
+              )}
+            </div>
             <div>
               <strong>{displayName || user.username}</strong>
               <span>{user.loginId}</span>
             </div>
           </div>
+
+          <label className="profile-image-upload">
+            <span>프로필 사진 변경</span>
+            <input type="file" accept="image/*" onChange={handleProfileImageChange} />
+          </label>
 
           <label>
             <span>디스플레이명</span>
@@ -91,7 +123,10 @@ export function ProfileEditModal({ onClose }: ProfileEditModalProps) {
             <input
               type="text"
               value={profileImageUrl}
-              onChange={(event) => setProfileImageUrl(event.target.value)}
+              onChange={(event) => {
+                setProfileImageUrl(event.target.value);
+                setImageLoadFailed(false);
+              }}
               placeholder="/images/users/profile.png"
             />
           </label>

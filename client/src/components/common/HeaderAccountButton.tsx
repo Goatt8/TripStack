@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 import { AccountEditModal } from '@/components/profile/AccountEditModal';
 import { ProfileEditModal } from '@/components/profile/ProfileEditModal';
@@ -113,6 +114,8 @@ export function HeaderAccountButton() {
     router.push('/login');
   }
 
+  const portalTarget = typeof document === 'undefined' ? null : document.body;
+
   return (
     <>
       <div className="header-account-menu" ref={menuRef}>
@@ -149,12 +152,14 @@ export function HeaderAccountButton() {
         )}
       </div>
 
-      {isProfileEditOpen && (
-        <ProfileEditModal onClose={() => setIsProfileEditOpen(false)} />
+      {portalTarget && isProfileEditOpen && createPortal(
+        <ProfileEditModal onClose={() => setIsProfileEditOpen(false)} />,
+        portalTarget,
       )}
 
-      {isAccountEditOpen && (
-        <AccountEditModal onClose={() => setIsAccountEditOpen(false)} />
+      {portalTarget && isAccountEditOpen && createPortal(
+        <AccountEditModal onClose={() => setIsAccountEditOpen(false)} />,
+        portalTarget,
       )}
     </>
   );
