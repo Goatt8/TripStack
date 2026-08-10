@@ -17,8 +17,12 @@ function formatOrderStatus(status: Order['status']) {
     return '완료';
   }
 
-  if (status === 'processing') {
-    return '인쇄준비';
+  if (status === 'shipping') {
+    return '발송대기';
+  }
+
+  if (status === 'producing') {
+    return '제작중';
   }
 
   return '주문접수';

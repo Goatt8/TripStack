@@ -50,7 +50,7 @@ export type GuidebookBlock = {
   imageUrl: string;
 };
 
-export type OrderStatus = 'pending' | 'processing' | 'completed';
+export type OrderStatus = 'pending' | 'producing' | 'shipping' | 'completed';
 
 export type Order = {
   id: number;

@@ -21,7 +21,8 @@ export function OrderStatusList({ orders, onStatusChange }: OrderStatusListProps
             </div>
             <select value={order.status} onChange={(event) => onStatusChange(order, event.target.value as OrderStatus)}>
               <option value="pending">pending</option>
-              <option value="processing">processing</option>
+              <option value="producing">producing</option>
+              <option value="shipping">shipping</option>
               <option value="completed">completed</option>
             </select>
           </article>

@@ -371,9 +371,14 @@
   font-weight: 900;
 }
 
-.sales-order-status.processing {
+.sales-order-status.producing {
   background: #fff7ed;
   color: #ea580c;
+}
+
+.sales-order-status.shipping {
+  background: #eff6ff;
+  color: #2563eb;
 }
 
 .sales-order-status.completed {

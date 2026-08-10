@@ -98,6 +98,13 @@ type CreateGuidebookBody = {
   }>;
 };
 
+type AdminUpdateUserBody = {
+  displayName?: string;
+  email?: string;
+  isAdmin?: boolean;
+  profileImageUrl?: string;
+};
+
 const app = express();
 const port = Number(process.env.PORT ?? 4000);
 const adminSignupCode = process.env.ADMIN_SIGNUP_CODE ?? 'tripstack-admin';
@@ -558,6 +565,107 @@ app.patch('/api/users/:id/account', (request, response) => {
   `).get(userId) as UserRow;
 
   response.json(serializeUser(user));
+});
+
+app.patch('/api/admin/users/:id', (request, response) => {
+  const userId = Number(request.params.id);
+  const { displayName, email, isAdmin, profileImageUrl } = request.body as AdminUpdateUserBody;
+  const normalizedDisplayName = displayName?.trim();
+  const normalizedEmail = email?.trim().toLowerCase();
+
+  if (!Number.isInteger(userId) || !normalizedDisplayName || !normalizedEmail || typeof isAdmin !== 'boolean') {
+    response.status(400).json({ message: 'userId, displayName, email, and isAdmin are required.' });
+    return;
+  }
+
+  const existingEmailOwner = db.prepare(`
+    SELECT id
+    FROM users
+    WHERE lower(email) = @email
+      AND id != @userId
+  `).get({ email: normalizedEmail, userId });
+
+  if (existingEmailOwner) {
+    response.status(409).json({ message: '이미 사용 중인 이메일입니다.' });
+    return;
+  }
+
+  const result = db.prepare(`
+    UPDATE users
+    SET username = @displayName,
+        display_name = @displayName,
+        email = @email,
+        is_admin = @isAdmin,
+        profile_image_url = @profileImageUrl,
+        avatar_url = @profileImageUrl,
+        updated_at = CURRENT_TIMESTAMP
+    WHERE id = @userId
+  `).run({
+    displayName: normalizedDisplayName,
+    email: normalizedEmail,
+    isAdmin: isAdmin ? 1 : 0,
+    profileImageUrl: profileImageUrl?.trim() || '',
+    userId,
+  });
+
+  if (result.changes === 0) {
+    response.status(404).json({ message: 'User not found.' });
+    return;
+  }
+
+  const user = db.prepare(`
+    SELECT
+      id,
+      login_id AS loginId,
+      username,
+      email,
+      display_name AS displayName,
+      bio,
+      profile_image_url AS profileImageUrl,
+      avatar_url AS avatarUrl,
+      follower_count AS followerCount,
+      is_admin AS isAdmin,
+      trust_score AS trustScore,
+      created_at AS createdAt,
+      updated_at AS updatedAt
+    FROM users
+    WHERE id = ?
+  `).get(userId) as UserRow;
+
+  response.json(serializeUser(user));
+});
+
+app.delete('/api/admin/users/:id', (request, response) => {
+  const userId = Number(request.params.id);
+
+  if (!Number.isInteger(userId)) {
+    response.status(400).json({ message: 'Valid userId is required.' });
+    return;
+  }
+
+  const dependencyCount = db.prepare(`
+    SELECT
+      (SELECT COUNT(*) FROM guidebooks WHERE creator_id = @userId) +
+      (SELECT COUNT(*) FROM orders WHERE consumer_id = @userId) +
+      (SELECT COUNT(*) FROM guidebooks
+        JOIN orders ON orders.guidebook_id = guidebooks.id
+        WHERE guidebooks.creator_id = @userId
+      ) AS count
+  `).get({ userId }) as { count: number };
+
+  if (dependencyCount.count > 0) {
+    response.status(409).json({ message: '연결된 가이드북 또는 주문이 있는 계정은 삭제할 수 없습니다.' });
+    return;
+  }
+
+  const result = db.prepare('DELETE FROM users WHERE id = ?').run(userId);
+
+  if (result.changes === 0) {
+    response.status(404).json({ message: 'User not found.' });
+    return;
+  }
+
+  response.status(204).send();
 });
 
 app.get('/api/guidebooks', (request, response) => {
@@ -1087,7 +1195,7 @@ app.post('/api/orders', (request, response) => {
 app.patch('/api/orders/:id/status', (request, response) => {
   const { status } = request.body as { status?: string };
 
-  if (!['pending', 'processing', 'completed'].includes(status ?? '')) {
+  if (!['pending', 'producing', 'shipping', 'completed'].includes(status ?? '')) {
     response.status(400).json({ message: 'Invalid status.' });
     return;
   }

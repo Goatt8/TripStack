@@ -70,6 +70,33 @@
   line-height: 1.1;
 }
 
+.admin-table-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  width: min(620px, 100%);
+  margin: 4px auto 0;
+  border: 1px solid #e4e7ec;
+  border-radius: 999px;
+  background: #ffffff;
+  padding: 5px;
+  box-shadow: 0 12px 30px rgb(16 24 40 / 8%);
+}
+
+.admin-table-tabs button {
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #667085;
+  padding: 10px 12px;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.admin-table-tabs button.active {
+  background: #101828;
+  color: #ffffff;
+}
+
 .admin-table-section {
   display: grid;
   gap: 10px;
@@ -103,6 +130,184 @@
   vertical-align: middle;
 }
 
+.admin-row-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.admin-row-actions button {
+  border: 1px solid #e4e7ec;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #101828;
+  padding: 7px 10px;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.admin-row-actions button.danger {
+  color: #be123c;
+}
+
+.admin-row-actions button:disabled {
+  color: #98a2b3;
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.admin-order-status-select {
+  min-width: 104px;
+  border: 1px solid #e4e7ec;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #101828;
+  padding: 7px 10px;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.admin-order-status-select.pending {
+  background: #f8fafc;
+  color: #475467;
+}
+
+.admin-order-status-select.producing {
+  background: #fff7ed;
+  color: #ea580c;
+}
+
+.admin-order-status-select.shipping {
+  background: #eff6ff;
+  color: #2563eb;
+}
+
+.admin-order-status-select.completed {
+  background: #ecfdf3;
+  color: #047857;
+}
+
+.admin-modal-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  background: rgb(16 24 40 / 36%);
+  padding: 24px;
+}
+
+.admin-user-modal {
+  width: min(430px, 100%);
+  border-radius: 16px;
+  background: #ffffff;
+  padding: 22px;
+  box-shadow: 0 28px 80px rgb(16 24 40 / 24%);
+}
+
+.admin-modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.admin-modal-header span {
+  color: #667085;
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.admin-modal-header h3 {
+  margin: 3px 0 0;
+  color: #101828;
+  font-size: 22px;
+}
+
+.admin-modal-header button {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid #e4e7ec;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #101828;
+  padding: 0;
+  font-size: 22px;
+  font-weight: 900;
+}
+
+.admin-user-form {
+  display: grid;
+  gap: 12px;
+}
+
+.admin-user-form label {
+  display: grid;
+  gap: 7px;
+}
+
+.admin-user-form label > span {
+  color: #344054;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.admin-user-form input[type='text'],
+.admin-user-form input[type='email'],
+.admin-user-form label:not(.admin-check-field) input {
+  width: 100%;
+  border: 1px solid #d0d5dd;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #101828;
+  padding: 11px 12px;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.admin-check-field {
+  display: flex !important;
+  align-items: center;
+  grid-template-columns: auto 1fr;
+  gap: 8px !important;
+  border: 1px solid #eef2f7;
+  border-radius: 10px;
+  background: #f8fafc;
+  padding: 12px;
+}
+
+.admin-check-field input {
+  width: 16px;
+  height: 16px;
+}
+
+.admin-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 18px;
+}
+
+.admin-modal-footer button {
+  border: 1px solid #e4e7ec;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #101828;
+  padding: 10px 16px;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.admin-modal-footer button:last-child {
+  border-color: #101828;
+  background: #101828;
+  color: #ffffff;
+}
+
 .admin-table th {
   background: #f8fafc;
   color: #667085;
@@ -123,5 +328,14 @@
 
   .admin-stat-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .admin-table-tabs {
+    border-radius: 14px;
+  }
+
+  .admin-table-tabs button {
+    padding: 9px 8px;
+    font-size: 12px;
   }
 }

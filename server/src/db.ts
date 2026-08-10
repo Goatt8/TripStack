@@ -133,7 +133,7 @@ export function initializeDatabase() {
       custom_print_id INTEGER,
       quantity INTEGER NOT NULL DEFAULT 1 CHECK(quantity > 0),
       total_price INTEGER NOT NULL DEFAULT 0,
-      status TEXT NOT NULL CHECK(status IN ('pending', 'processing', 'completed')) DEFAULT 'pending',
+      status TEXT NOT NULL CHECK(status IN ('pending', 'producing', 'shipping', 'completed')) DEFAULT 'pending',
       shipping_memo TEXT NOT NULL DEFAULT '',
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (consumer_id) REFERENCES users(id),
@@ -207,6 +207,8 @@ export function initializeDatabase() {
     db.prepare('ALTER TABLE orders ADD COLUMN total_price INTEGER NOT NULL DEFAULT 0').run();
   }
 
+  migrateOrderStatusConstraint();
+
   seedGuidebookPrices();
 
   const userCount = db.prepare('SELECT COUNT(*) AS count FROM users').get() as { count: number };
@@ -223,6 +225,66 @@ function seedGuidebookPrices() {
   seedGuidebooks.forEach(({ price, title }) => updatePrice.run({ price, title }));
 }
 
+function migrateOrderStatusConstraint() {
+  const ordersTable = db.prepare(`
+    SELECT sql
+    FROM sqlite_master
+    WHERE type = 'table'
+      AND name = 'orders'
+  `).get() as { sql: string } | undefined;
+
+  if (!ordersTable || ordersTable.sql.includes("'producing'")) {
+    return;
+  }
+
+  db.exec(`
+    PRAGMA foreign_keys = OFF;
+
+    CREATE TABLE orders_next (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      consumer_id INTEGER NOT NULL,
+      guidebook_id INTEGER NOT NULL,
+      custom_print_id INTEGER,
+      quantity INTEGER NOT NULL DEFAULT 1 CHECK(quantity > 0),
+      total_price INTEGER NOT NULL DEFAULT 0,
+      status TEXT NOT NULL CHECK(status IN ('pending', 'producing', 'shipping', 'completed')) DEFAULT 'pending',
+      shipping_memo TEXT NOT NULL DEFAULT '',
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (consumer_id) REFERENCES users(id),
+      FOREIGN KEY (guidebook_id) REFERENCES guidebooks(id),
+      FOREIGN KEY (custom_print_id) REFERENCES custom_prints(id)
+    );
+
+    INSERT INTO orders_next (
+      id,
+      consumer_id,
+      guidebook_id,
+      custom_print_id,
+      quantity,
+      total_price,
+      status,
+      shipping_memo,
+      created_at
+    )
+    SELECT
+      id,
+      consumer_id,
+      guidebook_id,
+      custom_print_id,
+      quantity,
+      total_price,
+      CASE WHEN status = 'processing' THEN 'producing' ELSE status END,
+      shipping_memo,
+      created_at
+    FROM orders;
+
+    DROP TABLE orders;
+    ALTER TABLE orders_next RENAME TO orders;
+
+    PRAGMA foreign_keys = ON;
+  `);
+}
+
 function seedDemoSalesOrders() {
   const guidebook = db.prepare(`
     SELECT id, price
@@ -237,7 +299,7 @@ function seedDemoSalesOrders() {
 
   const consumerSeeds = [
     { username: 'traveler.min', quantity: 2, status: 'pending', memo: 'demo-sales-order-1' },
-    { username: 'slow.route', quantity: 1, status: 'processing', memo: 'demo-sales-order-2' },
+    { username: 'slow.route', quantity: 1, status: 'producing', memo: 'demo-sales-order-2' },
     { username: 'paper.user', quantity: 4, status: 'completed', memo: 'demo-sales-order-3' },
   ];
 
@@ -463,7 +525,7 @@ function seedDatabase() {
 
   db.prepare(`
     INSERT INTO orders (consumer_id, guidebook_id, custom_print_id, status, shipping_memo)
-    VALUES (@consumerId, @guidebookId, @customPrintId, 'processing', '저장한 콘텐츠를 종이 가이드북처럼 훑어보기 위한 데모 주문')
+    VALUES (@consumerId, @guidebookId, @customPrintId, 'producing', '저장한 콘텐츠를 종이 가이드북처럼 훑어보기 위한 데모 주문')
   `).run({
     consumerId,
     guidebookId: guidebookIds[0],
