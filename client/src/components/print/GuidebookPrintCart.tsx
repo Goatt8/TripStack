@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 
-import { currentAccount } from '@/features/account/currentAccount';
+import { useAccountStore } from '@/features/account/accountStore';
 import { usePrintCartStore } from '@/features/basket/printCartStore';
 import { guidebookService } from '@/services/guidebookService';
 import type { Order } from '@/types';
@@ -33,6 +33,9 @@ export function GuidebookPrintCart() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [orderError, setOrderError] = useState('');
   const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
+  const currentUser = useAccountStore((state) => state.currentUser);
+  const loadCurrentUser = useAccountStore((state) => state.loadCurrentUser);
+  const currentUserId = currentUser?.id;
   const cartItems = usePrintCartStore((state) => state.items);
   const error = usePrintCartStore((state) => state.error);
   const loading = usePrintCartStore((state) => state.loading);
@@ -43,8 +46,14 @@ export function GuidebookPrintCart() {
   const activeView = searchParams.get('view') === 'sales' ? 'sales' : 'order';
 
   useEffect(() => {
-    void loadCart();
-  }, [loadCart]);
+    loadCurrentUser();
+  }, [loadCurrentUser]);
+
+  useEffect(() => {
+    if (currentUserId) {
+      void loadCart();
+    }
+  }, [currentUserId, loadCart]);
 
   useEffect(() => {
     void loadOrders();
@@ -67,7 +76,7 @@ export function GuidebookPrintCart() {
   const selectedCount = selectedItems.length;
   const totalQuantity = selectedItems.reduce((sum, item) => sum + item.quantity, 0);
   const totalPrice = selectedItems.reduce((sum, item) => sum + item.quantity * item.price, 0);
-  const salesOrders = orders.filter((order) => order.creatorId === currentAccount.creatorId);
+  const salesOrders = orders.filter((order) => order.creatorId === currentUserId);
   const salesTotalPrice = salesOrders.reduce((sum, order) => sum + order.totalPrice, 0);
 
   const selectedIdSet = useMemo(() => new Set(selectedIds), [selectedIds]);
@@ -121,9 +130,14 @@ export function GuidebookPrintCart() {
       setIsSubmittingOrder(true);
       setOrderError('');
 
+      if (!currentUserId) {
+        setOrderError('로그인이 필요합니다.');
+        return;
+      }
+
       const createdOrders = await Promise.all(selectedItems.map((item) => (
         guidebookService.createOrder({
-          consumerId: currentAccount.creatorId,
+          consumerId: currentUserId,
           guidebookId: item.guidebookId,
           quantity: item.quantity,
           selectedLayoutType: '기본 인쇄형',
@@ -246,7 +260,7 @@ export function GuidebookPrintCart() {
           <div className="sales-order-summary">
             <div>
               <span>Sales orders</span>
-              <strong>{currentAccount.displayName} 판매목록</strong>
+              <strong>{currentUser?.displayName ?? currentUser?.username ?? '내'} 판매목록</strong>
             </div>
             <p>{salesOrders.length}건 · {formatCurrency(salesTotalPrice)}</p>
           </div>

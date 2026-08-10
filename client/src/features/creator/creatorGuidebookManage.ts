@@ -1,6 +1,6 @@
-import { currentAccount } from '@/features/account/currentAccount';
-
-const DELETED_GUIDEBOOK_STORAGE_KEY = `tripstack.${currentAccount.role}.${currentAccount.creatorId}.deletedGuidebookIds`;
+function getDeletedGuidebookStorageKey(userId: number) {
+  return `tripstack.user.${userId}.deletedGuidebookIds`;
+}
 
 function normalizeGuidebookIds(value: unknown) {
   if (!Array.isArray(value)) {
@@ -32,10 +32,18 @@ function writeGuidebookIds(storageKey: string, guidebookIds: number[]) {
   return uniqueGuidebookIds;
 }
 
-export function readDeletedGuidebookIds() {
-  return readGuidebookIds(DELETED_GUIDEBOOK_STORAGE_KEY);
+export function readDeletedGuidebookIds(userId: number | null | undefined) {
+  if (!userId) {
+    return [];
+  }
+
+  return readGuidebookIds(getDeletedGuidebookStorageKey(userId));
 }
 
-export function addDeletedGuidebookId(guidebookId: number) {
-  return writeGuidebookIds(DELETED_GUIDEBOOK_STORAGE_KEY, [...readDeletedGuidebookIds(), guidebookId]);
+export function addDeletedGuidebookId(userId: number | null | undefined, guidebookId: number) {
+  if (!userId) {
+    return [];
+  }
+
+  return writeGuidebookIds(getDeletedGuidebookStorageKey(userId), [...readDeletedGuidebookIds(userId), guidebookId]);
 }

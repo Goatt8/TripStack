@@ -4,17 +4,49 @@ import * as React from 'react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
+import { SignupModal } from '@/components/auth/SignupModal';
 import { AppHeader } from '@/components/common/AppHeader';
+import { useAccountStore } from '@/features/account/accountStore';
+import { authService } from '@/services/authService';
+import type { User } from '@/types';
 
 export function LoginForm() {
   const [id, setId] = useState('');
   const [password, setPassword] = useState('');
+  const [errorMessage, setErrorMessage] = useState('');
+  const [isSignupOpen, setIsSignupOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const setCurrentUser = useAccountStore((state) => state.setCurrentUser);
   const router = useRouter();
 
-  const handleLogin = (event: React.FormEvent) => {
+  const saveCurrentUser = (user: User) => {
+    setCurrentUser(user);
+  };
+
+  const handleLogin = async (event: React.FormEvent) => {
     event.preventDefault();
 
-    console.log('입력한 아이디:', id);
+    try {
+      setIsSubmitting(true);
+      setErrorMessage('');
+
+      const user = await authService.login({
+        loginId: id,
+        password,
+      });
+
+      saveCurrentUser(user);
+      router.push('/consumer');
+    } catch (_error) {
+      setErrorMessage('아이디 또는 비밀번호가 일치하지 않습니다.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleSignupSuccess = (user: User) => {
+    saveCurrentUser(user);
+    setIsSignupOpen(false);
     router.push('/consumer');
   };
 
@@ -34,16 +66,20 @@ export function LoginForm() {
             <input type="password" value={password} onChange={(event) => setPassword(event.target.value)} required />
           </label>
 
+          {errorMessage && <p className="login-error" role="alert">{errorMessage}</p>}
+
           <div className="login-action-row">
-            <button className="login-submit" type="submit">
-              로그인하기
+            <button className="login-submit" type="submit" disabled={isSubmitting}>
+              {isSubmitting ? '확인 중' : '로그인하기'}
             </button>
-            <button className="signin-submit" type="button">
+            <button className="signin-submit" type="button" onClick={() => setIsSignupOpen(true)}>
               회원가입하기
             </button>
           </div>
         </form>
       </section>
+
+      {isSignupOpen && <SignupModal onClose={() => setIsSignupOpen(false)} onSignupSuccess={handleSignupSuccess} />}
     </main>
   );
 }

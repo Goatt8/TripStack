@@ -4,13 +4,12 @@ import { useParams } from 'next/navigation';
 
 import { AppHeader } from '@/components/common/AppHeader';
 import { CreatorStudioFeed } from '@/components/creator/CreatorStudioFeed';
-import { currentAccount } from '@/features/account/currentAccount';
 import { useGuidebookCatalog } from '@/features/guidebook/hooks/useGuidebookCatalog';
 
 export default function CreatorProfilePage() {
   const params = useParams<{ creatorId: string }>();
   const { creators, error, guidebooks, loading } = useGuidebookCatalog();
-  const viewedCreatorId = Number(params.creatorId) || currentAccount.creatorId;
+  const viewedCreatorId = Number(params.creatorId);
 
   return (
     <main className="app-shell">

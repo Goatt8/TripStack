@@ -1,14 +1,17 @@
-export type Role = 'creator' | 'consumer';
-
 export type User = {
   id: number;
+  loginId: string;
   username: string;
-  role: Role;
+  email: string;
+  displayName: string;
   bio: string;
+  profileImageUrl: string;
   avatarUrl: string;
   followerCount: number;
+  isAdmin: boolean;
   trustScore: number;
   createdAt: string;
+  updatedAt: string;
 };
 
 export type Guidebook = {

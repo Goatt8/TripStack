@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 
+import { useAccountStore } from '@/features/account/accountStore';
 import { usePrintCartStore } from '@/features/basket/printCartStore';
 import type { Guidebook, GuidebookBlock, User } from '@/types';
 
@@ -36,6 +37,7 @@ export function GuidebookPrintDetailModal({
 }: GuidebookPrintDetailModalProps) {
   const [isManageMenuOpen, setIsManageMenuOpen] = useState(false);
   const [isBasketUpdating, setIsBasketUpdating] = useState(false);
+  const currentUser = useAccountStore((state) => state.currentUser);
   const addGuidebook = usePrintCartStore((state) => state.addGuidebook);
   const guidebookIds = usePrintCartStore((state) => state.guidebookIds);
   const loadCart = usePrintCartStore((state) => state.loadCart);
@@ -43,10 +45,10 @@ export function GuidebookPrintDetailModal({
   const isBasketed = guidebookIds.includes(guidebook.id);
 
   useEffect(() => {
-    if (showBasketAction) {
+    if (showBasketAction && currentUser) {
       void loadCart();
     }
-  }, [loadCart, showBasketAction]);
+  }, [currentUser, loadCart, showBasketAction]);
 
   async function toggleBasket() {
     try {

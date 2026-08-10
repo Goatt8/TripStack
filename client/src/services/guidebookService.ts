@@ -23,7 +23,7 @@ export type CreateGuidebookResponse = {
 
 export const guidebookService = {
   getCreators() {
-    return request<User[]>('/users?role=creator');
+    return request<User[]>('/users');
   },
   getGuidebooks(region?: string) {
     const query = region && region !== 'all' ? `?region=${encodeURIComponent(region)}` : '';

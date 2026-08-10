@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 
+import { useAccountStore } from '@/features/account/accountStore';
 import { usePrintCartStore } from '@/features/basket/printCartStore';
 
 function PaperIcon() {
@@ -41,12 +42,20 @@ function PaperListIcon() {
 export function HeaderPrintButton() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const currentUser = useAccountStore((state) => state.currentUser);
+  const loadCurrentUser = useAccountStore((state) => state.loadCurrentUser);
   const basketCount = usePrintCartStore((state) => state.guidebookIds.length);
   const loadCart = usePrintCartStore((state) => state.loadCart);
 
   useEffect(() => {
-    void loadCart();
-  }, [loadCart]);
+    loadCurrentUser();
+  }, [loadCurrentUser]);
+
+  useEffect(() => {
+    if (currentUser) {
+      void loadCart();
+    }
+  }, [currentUser, loadCart]);
 
   useEffect(() => {
     function closeOnOutsideClick(event: MouseEvent) {

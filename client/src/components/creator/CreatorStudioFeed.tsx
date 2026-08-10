@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import { TopTabBar } from '@/components/common/TopTabBar';
 import { CreateGuidebookModal, type CreateGuidebookDraft } from '@/components/creator/CreateGuidebookModal';
 import { GuidebookPrintDetailModal } from '@/components/guidebook/GuidebookPrintDetailModal';
-import { currentAccount } from '@/features/account/currentAccount';
+import { useAccountStore } from '@/features/account/accountStore';
 import { usePrintCartStore } from '@/features/basket/printCartStore';
 import {
   addDeletedGuidebookId,
@@ -41,7 +41,7 @@ function HeartIcon() {
   );
 }
 
-export function CreatorStudioFeed({ creators, guidebooks, viewedCreatorId = currentAccount.creatorId }: CreatorStudioFeedProps) {
+export function CreatorStudioFeed({ creators, guidebooks, viewedCreatorId }: CreatorStudioFeedProps) {
   const [activeTab, setActiveTab] = useState<'mine' | 'saved'>('mine');
   const [deletedGuidebookIds, setDeletedGuidebookIds] = useState<number[]>([]);
   const [selectedGuidebook, setSelectedGuidebook] = useState<Guidebook | null>(null);
@@ -55,26 +55,47 @@ export function CreatorStudioFeed({ creators, guidebooks, viewedCreatorId = curr
   const [editingBlocks, setEditingBlocks] = useState<GuidebookBlock[]>([]);
   const [updatedGuidebooks, setUpdatedGuidebooks] = useState<Record<number, Guidebook>>({});
   const [updatedGuidebookBlocks, setUpdatedGuidebookBlocks] = useState<Record<number, GuidebookBlock[]>>({});
+  const currentUser = useAccountStore((state) => state.currentUser);
+  const loadCurrentUser = useAccountStore((state) => state.loadCurrentUser);
+  const currentUserId = currentUser?.id;
   const basketGuidebookIds = usePrintCartStore((state) => state.guidebookIds);
   const loadCart = usePrintCartStore((state) => state.loadCart);
-  const creator = creators.find((item) => item.id === viewedCreatorId);
-  const isOwnCreator = viewedCreatorId === currentAccount.creatorId;
+  const activeCreatorId = viewedCreatorId ?? currentUserId;
+  const isOwnCreator = Boolean(currentUserId && activeCreatorId === currentUserId);
+  const catalogCreator = creators.find((item) => item.id === activeCreatorId);
+  const creator = isOwnCreator && currentUser
+    ? {
+      ...(catalogCreator ?? currentUser),
+      avatarUrl: currentUser.profileImageUrl || currentUser.avatarUrl,
+      displayName: currentUser.displayName || currentUser.username,
+      email: currentUser.email,
+      loginId: currentUser.loginId,
+      profileImageUrl: currentUser.profileImageUrl || currentUser.avatarUrl,
+      username: currentUser.displayName || currentUser.username,
+    }
+    : catalogCreator;
 
   useEffect(() => {
-    setDeletedGuidebookIds(readDeletedGuidebookIds());
-    setInterestedCreatorIds(readInterestedCreatorIds());
+    loadCurrentUser();
+  }, [loadCurrentUser]);
+
+  useEffect(() => {
+    setDeletedGuidebookIds(readDeletedGuidebookIds(currentUserId));
+    setInterestedCreatorIds(readInterestedCreatorIds(currentUserId));
 
     function syncInterestedCreators(event: Event) {
-      setInterestedCreatorIds((event as CustomEvent<number[]>).detail ?? readInterestedCreatorIds());
+      setInterestedCreatorIds((event as CustomEvent<number[]>).detail ?? readInterestedCreatorIds(currentUserId));
     }
 
     window.addEventListener(INTERESTED_CREATOR_EVENT_NAME, syncInterestedCreators);
     return () => window.removeEventListener(INTERESTED_CREATOR_EVENT_NAME, syncInterestedCreators);
-  }, []);
+  }, [currentUserId]);
 
   useEffect(() => {
-    void loadCart();
-  }, [loadCart]);
+    if (currentUserId) {
+      void loadCart();
+    }
+  }, [currentUserId, loadCart]);
 
   useEffect(() => {
     function closeOnEscape(event: KeyboardEvent) {
@@ -146,7 +167,7 @@ export function CreatorStudioFeed({ creators, guidebooks, viewedCreatorId = curr
     }
 
     await guidebookService.deleteGuidebook(selectedGuidebook.id);
-    setDeletedGuidebookIds(addDeletedGuidebookId(selectedGuidebook.id));
+    setDeletedGuidebookIds(addDeletedGuidebookId(currentUserId, selectedGuidebook.id));
     setCreatedGuidebooks((previous) => previous.filter((guidebook) => guidebook.id !== selectedGuidebook.id));
     setCreatedGuidebookBlocks((previous) => {
       const { [selectedGuidebook.id]: _removed, ...nextBlocks } = previous;
@@ -175,7 +196,7 @@ export function CreatorStudioFeed({ creators, guidebooks, viewedCreatorId = curr
       return;
     }
 
-    setInterestedCreatorIds(toggleInterestedCreatorId(creator.id));
+    setInterestedCreatorIds(toggleInterestedCreatorId(currentUserId, creator.id));
   }
 
   async function createGuidebookFromDraft(draft: CreateGuidebookDraft) {
@@ -359,13 +380,13 @@ export function CreatorStudioFeed({ creators, guidebooks, viewedCreatorId = curr
       {selectedGuidebook && (
         <GuidebookPrintDetailModal
           blocks={selectedBlocks}
-          canManage={selectedGuidebook.creatorId === currentAccount.creatorId}
+          canManage={selectedGuidebook.creatorId === currentUserId}
           creator={selectedGuidebookCreator}
           guidebook={selectedGuidebook}
           onClose={closePrintDetail}
           onDelete={deleteSelectedGuidebook}
           onEdit={() => void editSelectedGuidebook()}
-          showBasketAction={selectedGuidebook.creatorId !== currentAccount.creatorId}
+          showBasketAction={selectedGuidebook.creatorId !== currentUserId}
         />
       )}
 

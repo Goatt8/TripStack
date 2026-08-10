@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useRef, useState } from 'react';
 import type { PointerEvent } from 'react';
-import { currentAccount } from '@/features/account/currentAccount';
+import { useAccountStore } from '@/features/account/accountStore';
 import type { User } from '@/types';
 
 type CreatorRailProps = {
@@ -20,6 +20,7 @@ function formatCompactCount(count: number) {
 
 export function CreatorRail({ creators }: CreatorRailProps) {
   const router = useRouter();
+  const currentUser = useAccountStore((state) => state.currentUser);
   const railRef = useRef<HTMLDivElement>(null);
   const dragState = useRef({
     isActive: false,
@@ -77,7 +78,7 @@ export function CreatorRail({ creators }: CreatorRailProps) {
       return;
     }
 
-    const href = creator.id === currentAccount.creatorId ? '/creator' : `/creator/${creator.id}`;
+    const href = creator.id === currentUser?.id ? '/creator' : `/creator/${creator.id}`;
     router.push(href);
   }
 

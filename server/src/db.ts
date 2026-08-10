@@ -1,12 +1,28 @@
 import Database from 'better-sqlite3';
 import { mkdirSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
+import { randomBytes, scryptSync } from 'node:crypto';
 
 const databasePath = process.env.DATABASE_PATH ?? '../data/tripstack.db';
 mkdirSync(dirname(resolve(databasePath)), { recursive: true });
 export const db = new Database(databasePath);
 
 db.pragma('foreign_keys = ON');
+
+function createPasswordHash(password: string) {
+  const salt = randomBytes(16).toString('hex');
+  const hash = scryptSync(password, salt, 64).toString('hex');
+
+  return `${salt}:${hash}`;
+}
+
+const demoPasswordHash = createPasswordHash('tripstack1234');
+
+function hasColumn(tableName: string, columnName: string) {
+  const columns = db.prepare(`PRAGMA table_info(${tableName})`).all() as { name: string }[];
+
+  return columns.some((column) => column.name === columnName);
+}
 
 type SeedGuidebook = {
   creatorId: number;
@@ -39,13 +55,19 @@ export function initializeDatabase() {
   db.exec(`
     CREATE TABLE IF NOT EXISTS users (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
+      login_id TEXT NOT NULL DEFAULT '',
       username TEXT NOT NULL,
-      role TEXT NOT NULL CHECK(role IN ('creator', 'consumer')),
+      email TEXT NOT NULL DEFAULT '',
+      password_hash TEXT NOT NULL DEFAULT '',
+      display_name TEXT NOT NULL DEFAULT '',
       bio TEXT NOT NULL DEFAULT '',
+      profile_image_url TEXT NOT NULL DEFAULT '',
       avatar_url TEXT NOT NULL DEFAULT '',
       follower_count INTEGER NOT NULL DEFAULT 0,
+      is_admin INTEGER NOT NULL DEFAULT 0,
       trust_score INTEGER NOT NULL DEFAULT 0,
-      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
 
     CREATE TABLE IF NOT EXISTS guidebooks (
@@ -120,6 +142,47 @@ export function initializeDatabase() {
     );
   `);
 
+  const userColumns = db.prepare('PRAGMA table_info(users)').all() as { name: string }[];
+
+  if (!userColumns.some((column) => column.name === 'login_id')) {
+    db.prepare("ALTER TABLE users ADD COLUMN login_id TEXT NOT NULL DEFAULT ''").run();
+  }
+
+  if (!userColumns.some((column) => column.name === 'email')) {
+    db.prepare("ALTER TABLE users ADD COLUMN email TEXT NOT NULL DEFAULT ''").run();
+  }
+
+  if (!userColumns.some((column) => column.name === 'password_hash')) {
+    db.prepare("ALTER TABLE users ADD COLUMN password_hash TEXT NOT NULL DEFAULT ''").run();
+  }
+
+  if (!userColumns.some((column) => column.name === 'display_name')) {
+    db.prepare("ALTER TABLE users ADD COLUMN display_name TEXT NOT NULL DEFAULT ''").run();
+  }
+
+  if (!userColumns.some((column) => column.name === 'profile_image_url')) {
+    db.prepare("ALTER TABLE users ADD COLUMN profile_image_url TEXT NOT NULL DEFAULT ''").run();
+  }
+
+  if (!userColumns.some((column) => column.name === 'updated_at')) {
+    db.prepare("ALTER TABLE users ADD COLUMN updated_at TEXT NOT NULL DEFAULT ''").run();
+  }
+
+  if (!userColumns.some((column) => column.name === 'is_admin')) {
+    db.prepare("ALTER TABLE users ADD COLUMN is_admin INTEGER NOT NULL DEFAULT 0").run();
+  }
+
+  db.prepare(`
+    UPDATE users
+    SET login_id = CASE WHEN login_id = '' THEN username ELSE login_id END,
+        email = CASE WHEN email = '' THEN lower(replace(username, ' ', '')) || '@tripstack.local' ELSE email END,
+        password_hash = CASE WHEN password_hash = '' THEN @passwordHash ELSE password_hash END,
+        display_name = CASE WHEN display_name = '' THEN username ELSE display_name END,
+        profile_image_url = CASE WHEN profile_image_url = '' THEN avatar_url ELSE profile_image_url END,
+        is_admin = CASE WHEN username = '수박이' THEN 0 ELSE is_admin END,
+        updated_at = CASE WHEN updated_at = '' THEN created_at ELSE updated_at END
+  `).run({ passwordHash: demoPasswordHash });
+
   const guidebookColumns = db.prepare('PRAGMA table_info(guidebooks)').all() as { name: string }[];
 
   if (!guidebookColumns.some((column) => column.name === 'country')) {
@@ -179,10 +242,15 @@ function seedDemoSalesOrders() {
   ];
 
   const findUser = db.prepare('SELECT id FROM users WHERE username = ?');
-  const insertUser = db.prepare(`
-    INSERT INTO users (username, role, bio, avatar_url, follower_count, trust_score)
-    VALUES (@username, 'consumer', 'TripStack 인쇄 주문 데모 사용자입니다.', '', 0, 0)
-  `);
+  const insertUser = hasColumn('users', 'role')
+    ? db.prepare(`
+      INSERT INTO users (login_id, username, role, email, password_hash, display_name, bio, profile_image_url, avatar_url, follower_count, is_admin, trust_score)
+      VALUES (@username, @username, 'consumer', @email, @passwordHash, @username, 'TripStack 인쇄 주문 데모 사용자입니다.', '', '', 0, 0, 0)
+    `)
+    : db.prepare(`
+      INSERT INTO users (login_id, username, email, password_hash, display_name, bio, profile_image_url, avatar_url, follower_count, is_admin, trust_score)
+      VALUES (@username, @username, @email, @passwordHash, @username, 'TripStack 인쇄 주문 데모 사용자입니다.', '', '', 0, 0, 0)
+    `);
   const findOrder = db.prepare('SELECT id FROM orders WHERE shipping_memo = ?');
   const insertCustomPrint = db.prepare(`
     INSERT INTO custom_prints (consumer_id, guidebook_id, selected_layout_type)
@@ -199,7 +267,11 @@ function seedDemoSalesOrders() {
     }
 
     const existingUser = findUser.get(seed.username) as { id: number } | undefined;
-    const consumerId = existingUser?.id ?? Number(insertUser.run({ username: seed.username }).lastInsertRowid);
+    const consumerId = existingUser?.id ?? Number(insertUser.run({
+      email: `${seed.username}@tripstack.local`,
+      passwordHash: demoPasswordHash,
+      username: seed.username,
+    }).lastInsertRowid);
     const customPrint = insertCustomPrint.run({ consumerId, guidebookId: guidebook.id });
 
     insertOrder.run({
@@ -215,10 +287,15 @@ function seedDemoSalesOrders() {
 }
 
 function seedDatabase() {
-  const insertUser = db.prepare(`
-    INSERT INTO users (username, role, bio, avatar_url, follower_count, trust_score)
-    VALUES (@username, @role, @bio, @avatarUrl, @followerCount, @trustScore)
-  `);
+  const insertUser = hasColumn('users', 'role')
+    ? db.prepare(`
+      INSERT INTO users (login_id, username, role, email, password_hash, display_name, bio, profile_image_url, avatar_url, follower_count, is_admin, trust_score)
+      VALUES (@loginId, @username, @role, @email, @passwordHash, @username, @bio, @avatarUrl, @avatarUrl, @followerCount, @isAdmin, @trustScore)
+    `)
+    : db.prepare(`
+      INSERT INTO users (login_id, username, email, password_hash, display_name, bio, profile_image_url, avatar_url, follower_count, is_admin, trust_score)
+      VALUES (@loginId, @username, @email, @passwordHash, @username, @bio, @avatarUrl, @avatarUrl, @followerCount, @isAdmin, @trustScore)
+    `);
 
   const creators = [
     {
@@ -310,12 +387,19 @@ function seedDatabase() {
   creators.forEach((creator) => {
     insertUser.run({
       ...creator,
+      email: `${creator.username.replace(/\s/g, '').toLowerCase()}@tripstack.local`,
+      loginId: creator.username,
+      passwordHash: demoPasswordHash,
       role: 'creator',
+      isAdmin: 0,
     });
   });
 
   const consumerId = Number(insertUser.run({
     username: 'traveler.min',
+    email: 'traveler.min@tripstack.local',
+    loginId: 'traveler.min',
+    passwordHash: demoPasswordHash,
     role: 'consumer',
     bio: '저장해둔 콘텐츠를 여행 전에 빠르게 다시 확인하는 사용자입니다.',
     avatarUrl: '',

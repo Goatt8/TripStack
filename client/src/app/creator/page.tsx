@@ -9,7 +9,7 @@ export default function CreatorPage() {
 
   return (
     <main className="app-shell">
-      <AppHeader compact title="크리에이터 스튜디오" />
+      <AppHeader compact showAccountMenu title="크리에이터 스튜디오" />
       {error && <p className="error-message">{error}</p>}
       {loading ? (
         <p className="empty-state">크리에이터 데이터를 불러오는 중입니다.</p>

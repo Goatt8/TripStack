@@ -1,18 +1,24 @@
 import cors from 'cors';
 import express from 'express';
+import { randomBytes, scryptSync, timingSafeEqual } from 'node:crypto';
 import { db, initializeDatabase } from './db.js';
 
 initializeDatabase();
 
 type UserRow = {
   id: number;
+  loginId: string;
   username: string;
-  role: string;
+  email: string;
+  displayName: string;
   bio: string;
+  profileImageUrl: string;
   avatarUrl: string;
   followerCount: number;
+  isAdmin: number;
   trustScore: number;
   createdAt: string;
+  updatedAt: string;
 };
 
 type GuidebookRow = {
@@ -94,6 +100,7 @@ type CreateGuidebookBody = {
 
 const app = express();
 const port = Number(process.env.PORT ?? 4000);
+const adminSignupCode = process.env.ADMIN_SIGNUP_CODE ?? 'tripstack-admin';
 
 app.use(cors());
 app.use(express.json());
@@ -111,6 +118,41 @@ function uniqueBy<T>(items: T[], getKey: (item: T) => string) {
     seenKeys.add(key);
     return true;
   });
+}
+
+function createPasswordHash(password: string) {
+  const salt = randomBytes(16).toString('hex');
+  const hash = scryptSync(password, salt, 64).toString('hex');
+
+  return `${salt}:${hash}`;
+}
+
+function verifyPassword(password: string, storedPasswordHash: string) {
+  const [salt, hash] = storedPasswordHash.split(':');
+
+  if (!salt || !hash) {
+    return false;
+  }
+
+  const inputHash = scryptSync(password, salt, 64);
+  const savedHash = Buffer.from(hash, 'hex');
+
+  return savedHash.length === inputHash.length && timingSafeEqual(savedHash, inputHash);
+}
+
+function serializeUser(row: UserRow) {
+  return {
+    ...row,
+    isAdmin: Boolean(row.isAdmin),
+    username: row.displayName || row.username,
+    avatarUrl: row.profileImageUrl || row.avatarUrl,
+  };
+}
+
+function hasColumn(tableName: string, columnName: string) {
+  const columns = db.prepare(`PRAGMA table_info(${tableName})`).all() as { name: string }[];
+
+  return columns.some((column) => column.name === columnName);
 }
 
 function getGuidebookById(guidebookId: number) {
@@ -190,23 +232,332 @@ app.get('/api/health', (_request, response) => {
 });
 
 app.get('/api/users', (request, response) => {
-  const role = request.query.role;
   const rows = db.prepare(`
     SELECT
       id,
+      login_id AS loginId,
       username,
-      role,
+      email,
+      display_name AS displayName,
       bio,
+      profile_image_url AS profileImageUrl,
       avatar_url AS avatarUrl,
       follower_count AS followerCount,
+      is_admin AS isAdmin,
       trust_score AS trustScore,
-      created_at AS createdAt
+      created_at AS createdAt,
+      updated_at AS updatedAt
     FROM users
-    WHERE @role IS NULL OR role = @role
     ORDER BY follower_count DESC
-  `).all({ role: typeof role === 'string' ? role : null }) as UserRow[];
+  `).all() as UserRow[];
 
-  response.json(uniqueBy(rows, (row) => `${row.username}-${row.avatarUrl}`));
+  response.json(uniqueBy(rows.map(serializeUser), (row) => `${row.username}-${row.avatarUrl}`));
+});
+
+app.post('/api/auth/signup', (request, response) => {
+  const { adminCode, displayName, email, loginId, password, profileImageUrl } = request.body as {
+    adminCode?: string;
+    displayName?: string;
+    email?: string;
+    loginId?: string;
+    password?: string;
+    profileImageUrl?: string;
+  };
+
+  const normalizedLoginId = loginId?.trim();
+  const normalizedEmail = email?.trim().toLowerCase();
+  const normalizedDisplayName = displayName?.trim();
+  const normalizedAdminCode = adminCode?.trim();
+
+  if (!normalizedLoginId || !normalizedEmail || !normalizedDisplayName || !password) {
+    response.status(400).json({ message: 'loginId, email, displayName, and password are required.' });
+    return;
+  }
+
+  const existingUser = db.prepare(`
+    SELECT id
+    FROM users
+    WHERE login_id = @loginId
+       OR lower(email) = @email
+  `).get({ email: normalizedEmail, loginId: normalizedLoginId });
+
+  if (existingUser) {
+    response.status(409).json({ message: '이미 사용 중인 아이디 또는 이메일입니다.' });
+    return;
+  }
+
+  if (normalizedAdminCode && normalizedAdminCode !== adminSignupCode) {
+    response.status(403).json({ message: '관리자 코드가 일치하지 않습니다.' });
+    return;
+  }
+
+  const isAdmin = normalizedAdminCode === adminSignupCode ? 1 : 0;
+
+  const insertUser = hasColumn('users', 'role')
+    ? db.prepare(`
+      INSERT INTO users (
+        login_id,
+        username,
+        role,
+        email,
+        password_hash,
+        display_name,
+        bio,
+        profile_image_url,
+        avatar_url,
+        follower_count,
+        is_admin,
+        trust_score
+      )
+      VALUES (
+        @loginId,
+        @displayName,
+        'consumer',
+        @email,
+        @passwordHash,
+        @displayName,
+        '',
+        @profileImageUrl,
+        @profileImageUrl,
+        0,
+        @isAdmin,
+        0
+      )
+    `)
+    : db.prepare(`
+      INSERT INTO users (
+        login_id,
+        username,
+        email,
+        password_hash,
+        display_name,
+        bio,
+        profile_image_url,
+        avatar_url,
+        follower_count,
+        is_admin,
+        trust_score
+      )
+      VALUES (
+        @loginId,
+        @displayName,
+        @email,
+        @passwordHash,
+        @displayName,
+        '',
+        @profileImageUrl,
+        @profileImageUrl,
+        0,
+        @isAdmin,
+        0
+      )
+    `);
+
+  const result = insertUser.run({
+    displayName: normalizedDisplayName,
+    email: normalizedEmail,
+    loginId: normalizedLoginId,
+    passwordHash: createPasswordHash(password),
+    profileImageUrl: profileImageUrl?.trim() || '',
+    isAdmin,
+  });
+
+  const user = db.prepare(`
+    SELECT
+      id,
+      login_id AS loginId,
+      username,
+      email,
+      display_name AS displayName,
+      bio,
+      profile_image_url AS profileImageUrl,
+      avatar_url AS avatarUrl,
+      follower_count AS followerCount,
+      is_admin AS isAdmin,
+      trust_score AS trustScore,
+      created_at AS createdAt,
+      updated_at AS updatedAt
+    FROM users
+    WHERE id = ?
+  `).get(result.lastInsertRowid) as UserRow;
+
+  response.status(201).json(serializeUser(user));
+});
+
+app.post('/api/auth/login', (request, response) => {
+  const { loginId, password } = request.body as { loginId?: string; password?: string };
+  const normalizedLoginId = loginId?.trim();
+
+  if (!normalizedLoginId || !password) {
+    response.status(400).json({ message: 'loginId and password are required.' });
+    return;
+  }
+
+  const user = db.prepare(`
+    SELECT
+      id,
+      login_id AS loginId,
+      username,
+      email,
+      password_hash AS passwordHash,
+      display_name AS displayName,
+      bio,
+      profile_image_url AS profileImageUrl,
+      avatar_url AS avatarUrl,
+      follower_count AS followerCount,
+      is_admin AS isAdmin,
+      trust_score AS trustScore,
+      created_at AS createdAt,
+      updated_at AS updatedAt
+    FROM users
+    WHERE login_id = ?
+  `).get(normalizedLoginId) as (UserRow & { passwordHash: string }) | undefined;
+
+  if (!user || !verifyPassword(password, user.passwordHash)) {
+    response.status(401).json({ message: '아이디 또는 비밀번호가 일치하지 않습니다.' });
+    return;
+  }
+
+  const { passwordHash: _passwordHash, ...safeUser } = user;
+  response.json(serializeUser(safeUser));
+});
+
+app.patch('/api/users/:id/profile', (request, response) => {
+  const userId = Number(request.params.id);
+  const { displayName, profileImageUrl } = request.body as {
+    displayName?: string;
+    profileImageUrl?: string;
+  };
+
+  const normalizedDisplayName = displayName?.trim();
+
+  if (!Number.isInteger(userId) || !normalizedDisplayName) {
+    response.status(400).json({ message: 'userId and displayName are required.' });
+    return;
+  }
+
+  const result = db.prepare(`
+    UPDATE users
+    SET username = @displayName,
+        display_name = @displayName,
+        profile_image_url = @profileImageUrl,
+        avatar_url = @profileImageUrl,
+        updated_at = CURRENT_TIMESTAMP
+    WHERE id = @userId
+  `).run({
+    displayName: normalizedDisplayName,
+    profileImageUrl: profileImageUrl?.trim() || '',
+    userId,
+  });
+
+  if (result.changes === 0) {
+    response.status(404).json({ message: 'User not found.' });
+    return;
+  }
+
+  const user = db.prepare(`
+    SELECT
+      id,
+      login_id AS loginId,
+      username,
+      email,
+      display_name AS displayName,
+      bio,
+      profile_image_url AS profileImageUrl,
+      avatar_url AS avatarUrl,
+      follower_count AS followerCount,
+      is_admin AS isAdmin,
+      trust_score AS trustScore,
+      created_at AS createdAt,
+      updated_at AS updatedAt
+    FROM users
+    WHERE id = ?
+  `).get(userId) as UserRow;
+
+  response.json(serializeUser(user));
+});
+
+app.patch('/api/users/:id/account', (request, response) => {
+  const userId = Number(request.params.id);
+  const { currentPassword, email, newPassword } = request.body as {
+    currentPassword?: string;
+    email?: string;
+    newPassword?: string;
+  };
+
+  const normalizedEmail = email?.trim().toLowerCase();
+  const normalizedNewPassword = newPassword?.trim();
+
+  if (!Number.isInteger(userId) || !normalizedEmail) {
+    response.status(400).json({ message: 'userId and email are required.' });
+    return;
+  }
+
+  const currentUser = db.prepare(`
+    SELECT password_hash AS passwordHash
+    FROM users
+    WHERE id = ?
+  `).get(userId) as { passwordHash: string } | undefined;
+
+  if (!currentUser) {
+    response.status(404).json({ message: 'User not found.' });
+    return;
+  }
+
+  if (normalizedNewPassword) {
+    if (!currentPassword || !verifyPassword(currentPassword, currentUser.passwordHash)) {
+      response.status(401).json({ message: '현재 비밀번호가 일치하지 않습니다.' });
+      return;
+    }
+  }
+
+  const existingEmailOwner = db.prepare(`
+    SELECT id
+    FROM users
+    WHERE lower(email) = @email
+      AND id != @userId
+  `).get({ email: normalizedEmail, userId });
+
+  if (existingEmailOwner) {
+    response.status(409).json({ message: '이미 사용 중인 이메일입니다.' });
+    return;
+  }
+
+  db.prepare(`
+    UPDATE users
+    SET email = @email,
+        password_hash = CASE
+          WHEN @passwordHash IS NULL THEN password_hash
+          ELSE @passwordHash
+        END,
+        updated_at = CURRENT_TIMESTAMP
+    WHERE id = @userId
+  `).run({
+    email: normalizedEmail,
+    passwordHash: normalizedNewPassword ? createPasswordHash(normalizedNewPassword) : null,
+    userId,
+  });
+
+  const user = db.prepare(`
+    SELECT
+      id,
+      login_id AS loginId,
+      username,
+      email,
+      display_name AS displayName,
+      bio,
+      profile_image_url AS profileImageUrl,
+      avatar_url AS avatarUrl,
+      follower_count AS followerCount,
+      is_admin AS isAdmin,
+      trust_score AS trustScore,
+      created_at AS createdAt,
+      updated_at AS updatedAt
+    FROM users
+    WHERE id = ?
+  `).get(userId) as UserRow;
+
+  response.json(serializeUser(user));
 });
 
 app.get('/api/guidebooks', (request, response) => {
@@ -399,7 +750,7 @@ app.post('/api/guidebooks', (request, response) => {
     return;
   }
 
-  const creator = db.prepare('SELECT id FROM users WHERE id = ? AND role = ?').get(creatorId, 'creator');
+  const creator = db.prepare('SELECT id FROM users WHERE id = ?').get(creatorId);
 
   if (!creator) {
     response.status(404).json({ message: 'Creator not found.' });

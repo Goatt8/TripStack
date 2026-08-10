@@ -8,7 +8,7 @@ import { CreatorRail } from '@/components/consumer/CreatorRail';
 import { GuidebookCategorySections } from '@/components/consumer/GuidebookCategorySections';
 import { GuidebookSearchBar } from '@/components/consumer/GuidebookSearchBar';
 import { GuidebookPrintDetailModal } from '@/components/guidebook/GuidebookPrintDetailModal';
-import { currentAccount } from '@/features/account/currentAccount';
+import { useAccountStore } from '@/features/account/accountStore';
 import {
   INTERESTED_CREATOR_EVENT_NAME,
   readInterestedCreatorIds,
@@ -49,9 +49,16 @@ export function ConsumerGuidebookFeed(props: ConsumerGuidebookFeedProps) {
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [isPrintDetailOpen, setIsPrintDetailOpen] = useState(false);
   const [interestedCreatorIds, setInterestedCreatorIds] = useState<number[]>([]);
+  const currentUser = useAccountStore((state) => state.currentUser);
+  const loadCurrentUser = useAccountStore((state) => state.loadCurrentUser);
+  const currentUserId = currentUser?.id;
   const selectedCreator = props.creators.find((creator) => creator.id === props.selectedGuidebook?.creatorId);
   const isSelectedCreatorInterested = selectedCreator ? interestedCreatorIds.includes(selectedCreator.id) : false;
-  const isSelectedCreatorCurrentAccount = selectedCreator?.id === currentAccount.creatorId;
+  const isSelectedCreatorCurrentAccount = selectedCreator?.id === currentUserId;
+
+  useEffect(() => {
+    loadCurrentUser();
+  }, [loadCurrentUser]);
 
   useEffect(() => {
     function closeOnEscape(event: KeyboardEvent) {
@@ -70,15 +77,15 @@ export function ConsumerGuidebookFeed(props: ConsumerGuidebookFeedProps) {
   }, [isPrintDetailOpen]);
 
   useEffect(() => {
-    setInterestedCreatorIds(readInterestedCreatorIds());
+    setInterestedCreatorIds(readInterestedCreatorIds(currentUserId));
 
     function syncInterestedCreators(event: Event) {
-      setInterestedCreatorIds((event as CustomEvent<number[]>).detail ?? readInterestedCreatorIds());
+      setInterestedCreatorIds((event as CustomEvent<number[]>).detail ?? readInterestedCreatorIds(currentUserId));
     }
 
     window.addEventListener(INTERESTED_CREATOR_EVENT_NAME, syncInterestedCreators);
     return () => window.removeEventListener(INTERESTED_CREATOR_EVENT_NAME, syncInterestedCreators);
-  }, []);
+  }, [currentUserId]);
 
   function openGuidebookDetail(guidebook: Guidebook) {
     props.onGuidebookSelect(guidebook);
@@ -91,11 +98,11 @@ export function ConsumerGuidebookFeed(props: ConsumerGuidebookFeedProps) {
       return;
     }
 
-    if (selectedCreator.id === currentAccount.creatorId) {
+    if (selectedCreator.id === currentUserId) {
       return;
     }
 
-    setInterestedCreatorIds(toggleInterestedCreatorId(selectedCreator.id));
+    setInterestedCreatorIds(toggleInterestedCreatorId(currentUserId, selectedCreator.id));
   }
 
   return (
@@ -206,7 +213,7 @@ export function ConsumerGuidebookFeed(props: ConsumerGuidebookFeedProps) {
           creator={selectedCreator}
           guidebook={props.selectedGuidebook}
           onClose={() => setIsPrintDetailOpen(false)}
-          showBasketAction={props.selectedGuidebook.creatorId !== currentAccount.creatorId}
+          showBasketAction={props.selectedGuidebook.creatorId !== currentUserId}
         />
       )}
     </>
