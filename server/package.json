@@ -9,9 +9,11 @@
     "build": "tsc"
   },
   "dependencies": {
+    "@types/jsonwebtoken": "^9.0.10",
     "better-sqlite3": "latest",
     "cors": "latest",
     "express": "latest",
+    "jsonwebtoken": "^9.0.3",
     "tsx": "latest"
   },
   "devDependencies": {

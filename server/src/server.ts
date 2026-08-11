@@ -1,5 +1,6 @@
 import cors from 'cors';
 import express, { type Request, type Response } from 'express';
+import jwt from 'jsonwebtoken';
 import { randomBytes, scryptSync, timingSafeEqual } from 'node:crypto';
 import { db, initializeDatabase } from './db.js';
 
@@ -121,11 +122,16 @@ const app = express();
 const port = Number(process.env.PORT ?? 4000);
 const adminSignupCode = process.env.ADMIN_SIGNUP_CODE ?? 'tripstack-admin';
 const geoapifyApiKey = process.env.GEOAPIFY_API_KEY ?? process.env.NEXT_PUBLIC_GEOAPIFY_API_KEY ?? '';
+const jwtSecret = process.env.JWT_SECRET ?? 'tripstack-local-jwt-secret';
 const mapLanguage = 'en';
 const mapPreviewHeight = '675';
 const mapPreviewStyle = 'klokantech-basic';
 const mapPreviewWidth = '900';
 const mapPreviewZoom = '11';
+
+type AuthTokenPayload = {
+  userId: number;
+};
 
 app.use(cors());
 app.use(express.json());
@@ -174,8 +180,38 @@ function serializeUser(row: UserRow) {
   };
 }
 
+function createAccessToken(userId: number) {
+  return jwt.sign({ userId } satisfies AuthTokenPayload, jwtSecret, {
+    expiresIn: '2h',
+  });
+}
+
+function getBearerToken(request: Request) {
+  const authorization = request.header('authorization');
+
+  if (!authorization?.startsWith('Bearer ')) {
+    return null;
+  }
+
+  return authorization.slice('Bearer '.length).trim();
+}
+
 function getRequestUser(request: Request) {
-  const userId = Number(request.header('x-user-id'));
+  const token = getBearerToken(request);
+
+  if (!token) {
+    return null;
+  }
+
+  let payload: AuthTokenPayload;
+
+  try {
+    payload = jwt.verify(token, jwtSecret) as AuthTokenPayload;
+  } catch {
+    return null;
+  }
+
+  const userId = payload.userId;
 
   if (!Number.isInteger(userId)) {
     return null;
@@ -652,7 +688,10 @@ app.post('/api/auth/signup', (request, response) => {
     WHERE id = ?
   `).get(result.lastInsertRowid) as UserRow;
 
-  response.status(201).json(serializeUser(user));
+  response.status(201).json({
+    token: createAccessToken(user.id),
+    user: serializeUser(user),
+  });
 });
 
 app.post('/api/auth/login', (request, response) => {
@@ -690,7 +729,10 @@ app.post('/api/auth/login', (request, response) => {
   }
 
   const { passwordHash: _passwordHash, ...safeUser } = user;
-  response.json(serializeUser(safeUser));
+  response.json({
+    token: createAccessToken(user.id),
+    user: serializeUser(safeUser),
+  });
 });
 
 app.patch('/api/users/:id/profile', (request, response) => {

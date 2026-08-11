@@ -1,7 +1,8 @@
 import { create } from 'zustand';
 
-import type { User } from '@/types';
+import type { AuthSession, User } from '@/types';
 
+export const AUTH_TOKEN_STORAGE_KEY = 'tripstack.authToken';
 const CURRENT_USER_STORAGE_KEY = 'tripstack.currentUser';
 
 function readStoredUser() {
@@ -21,6 +22,7 @@ type AccountStore = {
   currentUser: User | null;
   loadCurrentUser: () => void;
   logout: () => void;
+  setAuthSession: (session: AuthSession) => void;
   setCurrentUser: (user: User) => void;
   updateCurrentUser: (user: User) => void;
 };
@@ -34,10 +36,20 @@ export const useAccountStore = create<AccountStore>((set) => ({
 
   logout() {
     if (typeof window !== 'undefined') {
+      window.localStorage.removeItem(AUTH_TOKEN_STORAGE_KEY);
       window.localStorage.removeItem(CURRENT_USER_STORAGE_KEY);
     }
 
     set({ currentUser: null });
+  },
+
+  setAuthSession(session) {
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(AUTH_TOKEN_STORAGE_KEY, session.token);
+      window.localStorage.setItem(CURRENT_USER_STORAGE_KEY, JSON.stringify(session.user));
+    }
+
+    set({ currentUser: session.user });
   },
 
   setCurrentUser(user) {

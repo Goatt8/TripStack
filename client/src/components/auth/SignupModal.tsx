@@ -4,11 +4,11 @@ import * as React from 'react';
 import { useState } from 'react';
 
 import { authService } from '@/services/authService';
-import type { User } from '@/types';
+import type { AuthSession } from '@/types';
 
 type SignupModalProps = {
   onClose: () => void;
-  onSignupSuccess: (user: User) => void;
+  onSignupSuccess: (session: AuthSession) => void;
 };
 
 export function SignupModal({ onClose, onSignupSuccess }: SignupModalProps) {
@@ -38,7 +38,7 @@ export function SignupModal({ onClose, onSignupSuccess }: SignupModalProps) {
       setIsSubmitting(true);
       setErrorMessage('');
 
-      const user = await authService.signup({
+      const session = await authService.signup({
         displayName,
         email,
         loginId,
@@ -46,7 +46,7 @@ export function SignupModal({ onClose, onSignupSuccess }: SignupModalProps) {
         adminCode: adminCode.trim() || undefined,
       });
 
-      onSignupSuccess(user);
+      onSignupSuccess(session);
     } catch (_error) {
       setErrorMessage('회원가입에 실패했습니다. 아이디나 이메일을 확인해주세요.');
     } finally {

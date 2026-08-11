@@ -14,6 +14,11 @@ export type User = {
   updatedAt: string;
 };
 
+export type AuthSession = {
+  token: string;
+  user: User;
+};
+
 export type Guidebook = {
   id: number;
   creatorId: number;

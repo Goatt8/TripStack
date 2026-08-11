@@ -1,5 +1,5 @@
 import { request } from '@/services/apiClient';
-import type { User } from '@/types';
+import type { AuthSession, User } from '@/types';
 
 export type LoginPayload = {
   loginId: string;
@@ -28,13 +28,13 @@ export type UpdateAccountPayload = {
 
 export const authService = {
   login(payload: LoginPayload) {
-    return request<User>('/auth/login', {
+    return request<AuthSession>('/auth/login', {
       method: 'POST',
       body: JSON.stringify(payload),
     });
   },
   signup(payload: SignupPayload) {
-    return request<User>('/auth/signup', {
+    return request<AuthSession>('/auth/signup', {
       method: 'POST',
       body: JSON.stringify(payload),
     });

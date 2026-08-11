@@ -8,7 +8,7 @@ import { SignupModal } from '@/components/auth/SignupModal';
 import { AppHeader } from '@/components/common/AppHeader';
 import { useAccountStore } from '@/features/account/accountStore';
 import { authService } from '@/services/authService';
-import type { User } from '@/types';
+import type { AuthSession } from '@/types';
 
 export function LoginForm() {
   const [id, setId] = useState('');
@@ -16,11 +16,11 @@ export function LoginForm() {
   const [errorMessage, setErrorMessage] = useState('');
   const [isSignupOpen, setIsSignupOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const setCurrentUser = useAccountStore((state) => state.setCurrentUser);
+  const setAuthSession = useAccountStore((state) => state.setAuthSession);
   const router = useRouter();
 
-  const saveCurrentUser = (user: User) => {
-    setCurrentUser(user);
+  const saveAuthSession = (session: AuthSession) => {
+    setAuthSession(session);
   };
 
   const handleLogin = async (event: React.FormEvent) => {
@@ -30,12 +30,12 @@ export function LoginForm() {
       setIsSubmitting(true);
       setErrorMessage('');
 
-      const user = await authService.login({
+      const session = await authService.login({
         loginId: id,
         password,
       });
 
-      saveCurrentUser(user);
+      saveAuthSession(session);
       router.push('/consumer');
     } catch (_error) {
       setErrorMessage('아이디 또는 비밀번호가 일치하지 않습니다.');
@@ -44,8 +44,8 @@ export function LoginForm() {
     }
   };
 
-  const handleSignupSuccess = (user: User) => {
-    saveCurrentUser(user);
+  const handleSignupSuccess = (session: AuthSession) => {
+    saveAuthSession(session);
     setIsSignupOpen(false);
     router.push('/consumer');
   };

@@ -1,22 +1,15 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000/api';
-const CURRENT_USER_STORAGE_KEY = 'tripstack.currentUser';
+const AUTH_TOKEN_STORAGE_KEY = 'tripstack.authToken';
 
-function getCurrentUserIdHeader(): Record<string, string> {
+function getAuthToken() {
   if (typeof window === 'undefined') {
-    return {};
+    return null;
   }
 
   try {
-    const storedUser = window.localStorage.getItem(CURRENT_USER_STORAGE_KEY);
-
-    if (!storedUser) {
-      return {};
-    }
-
-    const user = JSON.parse(storedUser) as { id?: number };
-    return user.id ? { 'x-user-id': String(user.id) } : {};
+    return window.localStorage.getItem(AUTH_TOKEN_STORAGE_KEY);
   } catch {
-    return {};
+    return null;
   }
 }
 
@@ -24,10 +17,10 @@ export async function request<T>(path: string, options?: RequestInit): Promise<T
   const headers = new Headers(options?.headers);
   headers.set('Content-Type', 'application/json');
 
-  const currentUserHeader = getCurrentUserIdHeader();
+  const token = getAuthToken();
 
-  if (currentUserHeader['x-user-id']) {
-    headers.set('x-user-id', currentUserHeader['x-user-id']);
+  if (token) {
+    headers.set('Authorization', `Bearer ${token}`);
   }
 
   const response = await fetch(`${API_URL}${path}`, {
