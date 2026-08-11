@@ -8,7 +8,7 @@ export const regions: RegionOption[] = [
   { id: '푸켓', label: '푸켓' },
   { id: '파리', label: '파리' },
   { id: '오사카', label: '오사카' },
-  { id: '아마존', label: '아마존' },
+  { id: '마나우스', label: '마나우스' },
 ];
 
 export const layouts: LayoutOption[] = [
@@ -22,7 +22,7 @@ export const locationCategories: LocationCountryOption[] = [
     id: 'korea',
     label: '대한민국',
     cities: [
-      { id: '강원도', label: '강원도', description: '계곡, 숲길, 서울 근교 여름 코스' },
+      { id: '강릉', label: '강릉', description: '계곡, 숲길, 서울 근교 여름 코스' },
     ],
   },
   {
@@ -51,7 +51,7 @@ export const locationCategories: LocationCountryOption[] = [
     id: 'brazil',
     label: '브라질',
     cities: [
-      { id: '아마존', label: '아마존', description: '자연과 사파리 분위기의 탐험 코스' },
+      { id: '마나우스', label: '마나우스', description: '아마존 여행의 거점 도시 코스' },
     ],
   },
 ];
@@ -73,15 +73,15 @@ export const guidebookKeywordMap: Record<string, string[]> = {
   jeju: ['summer', 'resort', 'cafe', 'weather'],
   roma: ['city', 'walk', 'winter', 'weather'],
   bangkok: ['summer', 'city', 'resort', 'weather'],
-  아마존: ['summer', 'resort', 'weather'],
-  강원도: ['summer', 'resort', 'walk', 'weather'],
+  마나우스: ['summer', 'resort', 'weather'],
+  강릉: ['summer', 'resort', 'walk', 'weather'],
   안타나나리보: ['summer', 'resort', 'weather'],
   오키나와: ['summer', 'resort', 'weather'],
   인터라켄: ['winter', 'resort', 'walk', 'weather'],
   코펜하겐: ['winter', 'city', 'walk'],
   로마: ['city', 'walk', 'winter', 'weather'],
   푸켓: ['summer', 'resort', 'weather'],
-  벤쿠버: ['summer', 'resort', 'walk', 'weather'],
+  밴쿠버: ['summer', 'resort', 'walk', 'weather'],
   오사카: ['city', 'cafe', 'walk', 'weather'],
   제네바: ['winter', 'city', 'walk', 'weather'],
   파리: ['city', 'cafe', 'walk', 'weather'],

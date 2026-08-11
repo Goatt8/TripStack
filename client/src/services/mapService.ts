@@ -1,5 +1,13 @@
 import { request } from '@/services/apiClient';
 
+export type MapCityOption = {
+  city: string;
+  country: string;
+  mapCenterLat: number | null;
+  mapCenterLon: number | null;
+  mapImageUrl: string;
+};
+
 export type MapPreview = {
   country: string;
   mapCenterLat: number | null;
@@ -10,6 +18,9 @@ export type MapPreview = {
 };
 
 export const mapService = {
+  getCityOptions(country: string) {
+    return request<MapCityOption[]>(`/maps/cities?country=${encodeURIComponent(country)}`);
+  },
   getMapPreview(params: {
     country: string;
     fallbackLat?: number | null;

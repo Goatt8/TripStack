@@ -5,6 +5,11 @@ type GuidebookMapSource = {
 };
 
 const geoapifyApiKey = process.env.NEXT_PUBLIC_GEOAPIFY_API_KEY;
+const mapLanguage = 'en';
+const mapPreviewHeight = '675';
+const mapPreviewStyle = 'klokantech-basic';
+const mapPreviewWidth = '900';
+const mapPreviewZoom = '11';
 
 export function getGuidebookMapImageUrl(source: GuidebookMapSource) {
   if (
@@ -18,10 +23,11 @@ export function getGuidebookMapImageUrl(source: GuidebookMapSource) {
   const params = new URLSearchParams({
     apiKey: geoapifyApiKey,
     center: `lonlat:${source.mapCenterLon},${source.mapCenterLat}`,
-    height: '540',
-    style: 'osm-bright',
-    width: '900',
-    zoom: '11',
+    height: mapPreviewHeight,
+    lang: mapLanguage,
+    style: mapPreviewStyle,
+    width: mapPreviewWidth,
+    zoom: mapPreviewZoom,
   });
 
   params.set('marker', `lonlat:${source.mapCenterLon},${source.mapCenterLat};color:blue;size:medium`);

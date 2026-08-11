@@ -62,6 +62,7 @@ type GeoapifyGeocodeResponse = {
   results?: Array<{
     lat?: number;
     lon?: number;
+    result_type?: string;
   }>;
 };
 
@@ -120,6 +121,11 @@ const app = express();
 const port = Number(process.env.PORT ?? 4000);
 const adminSignupCode = process.env.ADMIN_SIGNUP_CODE ?? 'tripstack-admin';
 const geoapifyApiKey = process.env.GEOAPIFY_API_KEY ?? process.env.NEXT_PUBLIC_GEOAPIFY_API_KEY ?? '';
+const mapLanguage = 'en';
+const mapPreviewHeight = '675';
+const mapPreviewStyle = 'klokantech-basic';
+const mapPreviewWidth = '900';
+const mapPreviewZoom = '11';
 
 app.use(cors());
 app.use(express.json());
@@ -282,8 +288,10 @@ app.get('/api/maps/preview', async (request, response) => {
     const geocodeUrl = new URL('https://api.geoapify.com/v1/geocode/search');
     geocodeUrl.searchParams.set('apiKey', geoapifyApiKey);
     geocodeUrl.searchParams.set('format', 'json');
+    geocodeUrl.searchParams.set('lang', mapLanguage);
     geocodeUrl.searchParams.set('limit', '1');
     geocodeUrl.searchParams.set('text', `${region}, ${country}`);
+    geocodeUrl.searchParams.set('type', 'city');
 
     const geocodeResponse = await fetch(geocodeUrl);
 
@@ -315,11 +323,12 @@ app.get('/api/maps/preview', async (request, response) => {
     const staticMapUrl = new URL('https://maps.geoapify.com/v1/staticmap');
     staticMapUrl.searchParams.set('apiKey', geoapifyApiKey);
     staticMapUrl.searchParams.set('center', `lonlat:${mapCenterLon},${mapCenterLat}`);
-    staticMapUrl.searchParams.set('height', '540');
+    staticMapUrl.searchParams.set('height', mapPreviewHeight);
+    staticMapUrl.searchParams.set('lang', mapLanguage);
     staticMapUrl.searchParams.set('marker', `lonlat:${mapCenterLon},${mapCenterLat};color:blue;size:medium`);
-    staticMapUrl.searchParams.set('style', 'osm-bright');
-    staticMapUrl.searchParams.set('width', '900');
-    staticMapUrl.searchParams.set('zoom', '11');
+    staticMapUrl.searchParams.set('style', mapPreviewStyle);
+    staticMapUrl.searchParams.set('width', mapPreviewWidth);
+    staticMapUrl.searchParams.set('zoom', mapPreviewZoom);
 
     response.json({
       country,
@@ -339,6 +348,29 @@ app.get('/api/maps/preview', async (request, response) => {
       region,
     });
   }
+});
+
+app.get('/api/maps/cities', (request, response) => {
+  const country = typeof request.query.country === 'string' ? request.query.country : '';
+
+  if (!country) {
+    response.status(400).json({ message: 'country is required.' });
+    return;
+  }
+
+  const rows = db.prepare(`
+    SELECT
+      country,
+      city,
+      fallback_map_image_url AS mapImageUrl,
+      map_center_lat AS mapCenterLat,
+      map_center_lon AS mapCenterLon
+    FROM location_presets
+    WHERE country = ?
+    ORDER BY sort_order ASC, city ASC
+  `).all(country);
+
+  response.json(rows);
 });
 
 app.get('/api/users', (request, response) => {

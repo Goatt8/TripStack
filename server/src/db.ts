@@ -62,6 +62,15 @@ type SeedGuidebook = {
   blockCount: number;
 };
 
+type SeedLocationPreset = {
+  country: string;
+  city: string;
+  mapCenterLat: number;
+  mapCenterLon: number;
+  fallbackMapImageUrl: string;
+  sortOrder: number;
+};
+
 const seedGuidebooks: SeedGuidebook[] = [
   { creatorId: 1, title: '이탈리아 인생 여행지', country: '이탈리아', region: '로마', coverImageUrl: '/images/guidebooks/user1-1.jpeg', mapImageUrl: '/images/map/로마-map.jpeg', mapCenterLat: 41.9028, mapCenterLon: 12.4964, printCount: 1432000, price: 1480, blockCount: 4 },
   { creatorId: 2, title: '스위스 인터라켄에서 일어난 일', country: '스위스', region: '인터라켄', coverImageUrl: '/images/guidebooks/user2-1.jpeg', mapImageUrl: '/images/map/파리-map.jpeg', mapCenterLat: 46.6863, mapCenterLon: 7.8632, printCount: 928000, price: 1500, blockCount: 4 },
@@ -69,12 +78,38 @@ const seedGuidebooks: SeedGuidebook[] = [
   { creatorId: 4, title: '태국 푸켓에서 수영하기', country: '태국', region: '푸켓', coverImageUrl: '/images/guidebooks/user4-1.jpeg', mapImageUrl: '/images/map/아마존-map.jpeg', mapCenterLat: 7.8804, mapCenterLon: 98.3923, printCount: 672000, price: 1280, blockCount: 5 },
   { creatorId: 5, title: '사진으로 따라가는 사파리 여행', country: '마다가스카르', region: '안타나나리보', coverImageUrl: '/images/guidebooks/user5-1.jpeg', mapImageUrl: '/images/map/아마존-map.jpeg', mapCenterLat: -18.8792, mapCenterLon: 47.5079, printCount: 5340, price: 16800, blockCount: 4 },
   { creatorId: 6, title: '스위스에서 기차여행', country: '스위스', region: '제네바', coverImageUrl: '/images/guidebooks/user6-1.jpeg', mapImageUrl: '/images/map/파리-map.jpeg', mapCenterLat: 46.2044, mapCenterLon: 6.1432, printCount: 421000, price: 1380, blockCount: 3 },
-  { creatorId: 7, title: '여름 계곡 추천 서울근교', country: '대한민국', region: '강원도', coverImageUrl: '/images/guidebooks/user7-1.jpeg', mapImageUrl: '/images/map/오사카-map.jpeg', mapCenterLat: 37.8228, mapCenterLon: 128.1555, printCount: 318000, price: 2800, blockCount: 4 },
+  { creatorId: 7, title: '여름 계곡 추천 서울근교', country: '대한민국', region: '강릉', coverImageUrl: '/images/guidebooks/user7-1.jpeg', mapImageUrl: '/images/map/오사카-map.jpeg', mapCenterLat: 37.7519, mapCenterLon: 128.8761, printCount: 318000, price: 2800, blockCount: 4 },
   { creatorId: 8, title: '수박이와 가는 프랑스', country: '프랑스', region: '파리', coverImageUrl: '/images/guidebooks/user8-1.jpeg', mapImageUrl: '/images/map/파리-map.jpeg', mapCenterLat: 48.8566, mapCenterLon: 2.3522, printCount: 28700000, price: 1280, blockCount: 6 },
-  { creatorId: 9, title: '캐나다 호수 vlog', country: '캐나다', region: '벤쿠버', coverImageUrl: '/images/guidebooks/user9-1.jpeg', mapImageUrl: '/images/map/파리-map.jpeg', mapCenterLat: 49.2827, mapCenterLon: -123.1207, printCount: 245000, price: 1180, blockCount: 6 },
+  { creatorId: 9, title: '캐나다 호수 vlog', country: '캐나다', region: '밴쿠버', coverImageUrl: '/images/guidebooks/user9-1.jpeg', mapImageUrl: '/images/map/파리-map.jpeg', mapCenterLat: 49.2827, mapCenterLon: -123.1207, printCount: 245000, price: 1180, blockCount: 6 },
   { creatorId: 10, title: '크리스마스를 즐기려면', country: '덴마크', region: '코펜하겐', coverImageUrl: '/images/guidebooks/user10-1.jpeg', mapImageUrl: '/images/map/로마-map.jpeg', mapCenterLat: 55.6761, mapCenterLon: 12.5683, printCount: 218000, price: 1380, blockCount: 6 },
   { creatorId: 11, title: '저장해두고 보는 오사카 여행', country: '일본', region: '오사카', coverImageUrl: '/images/guidebooks/user11-1.jpeg', mapImageUrl: '/images/map/오사카-map.jpeg', mapCenterLat: 34.6937, mapCenterLon: 135.5023, printCount: 1960000, price: 1280, blockCount: 6 },
-  { creatorId: 12, title: '아마존 추천 여행코스', country: '브라질', region: '아마존', coverImageUrl: '/images/guidebooks/user12-1.jpeg', mapImageUrl: '/images/map/아마존-map.jpeg', mapCenterLat: -3.4653, mapCenterLon: -62.2159, printCount: 17200000, price: 1680, blockCount: 6 },
+  { creatorId: 12, title: '아마존 추천 여행코스', country: '브라질', region: '마나우스', coverImageUrl: '/images/guidebooks/user12-1.jpeg', mapImageUrl: '/images/map/아마존-map.jpeg', mapCenterLat: -3.119, mapCenterLon: -60.0217, printCount: 17200000, price: 1680, blockCount: 6 },
+];
+
+export const seedLocationPresets: SeedLocationPreset[] = [
+  // 포폴용 지원 도시 목록입니다. 필요한 도시만 이 배열에 추가하면 생성 모달에 노출됩니다.
+  { country: '대한민국', city: '서울', mapCenterLat: 37.5665, mapCenterLon: 126.978, fallbackMapImageUrl: '/images/map/default-map.jpeg', sortOrder: 1 },
+  { country: '대한민국', city: '부산', mapCenterLat: 35.1796, mapCenterLon: 129.0756, fallbackMapImageUrl: '/images/map/default-map.jpeg', sortOrder: 2 },
+  { country: '대한민국', city: '제주', mapCenterLat: 33.4996, mapCenterLon: 126.5312, fallbackMapImageUrl: '/images/map/default-map.jpeg', sortOrder: 3 },
+  { country: '대한민국', city: '강릉', mapCenterLat: 37.7519, mapCenterLon: 128.8761, fallbackMapImageUrl: '/images/map/default-map.jpeg', sortOrder: 4 },
+  { country: '일본', city: '도쿄', mapCenterLat: 35.6762, mapCenterLon: 139.6503, fallbackMapImageUrl: '/images/map/default-map.jpeg', sortOrder: 1 },
+  { country: '일본', city: '오사카', mapCenterLat: 34.6937, mapCenterLon: 135.5023, fallbackMapImageUrl: '/images/map/오사카-map.jpeg', sortOrder: 2 },
+  { country: '일본', city: '교토', mapCenterLat: 35.0116, mapCenterLon: 135.7681, fallbackMapImageUrl: '/images/map/default-map.jpeg', sortOrder: 3 },
+  { country: '일본', city: '오키나와', mapCenterLat: 26.2124, mapCenterLon: 127.6792, fallbackMapImageUrl: '/images/map/오사카-map.jpeg', sortOrder: 4 },
+  { country: '프랑스', city: '파리', mapCenterLat: 48.8566, mapCenterLon: 2.3522, fallbackMapImageUrl: '/images/map/파리-map.jpeg', sortOrder: 1 },
+  { country: '프랑스', city: '니스', mapCenterLat: 43.7102, mapCenterLon: 7.262, fallbackMapImageUrl: '/images/map/default-map.jpeg', sortOrder: 2 },
+  { country: '프랑스', city: '리옹', mapCenterLat: 45.764, mapCenterLon: 4.8357, fallbackMapImageUrl: '/images/map/default-map.jpeg', sortOrder: 3 },
+  { country: '이탈리아', city: '로마', mapCenterLat: 41.9028, mapCenterLon: 12.4964, fallbackMapImageUrl: '/images/map/로마-map.jpeg', sortOrder: 1 },
+  { country: '이탈리아', city: '피렌체', mapCenterLat: 43.7696, mapCenterLon: 11.2558, fallbackMapImageUrl: '/images/map/default-map.jpeg', sortOrder: 2 },
+  { country: '이탈리아', city: '베네치아', mapCenterLat: 45.4408, mapCenterLon: 12.3155, fallbackMapImageUrl: '/images/map/default-map.jpeg', sortOrder: 3 },
+  { country: '스위스', city: '인터라켄', mapCenterLat: 46.6863, mapCenterLon: 7.8632, fallbackMapImageUrl: '/images/map/파리-map.jpeg', sortOrder: 1 },
+  { country: '스위스', city: '제네바', mapCenterLat: 46.2044, mapCenterLon: 6.1432, fallbackMapImageUrl: '/images/map/파리-map.jpeg', sortOrder: 2 },
+  { country: '브라질', city: '마나우스', mapCenterLat: -3.119, mapCenterLon: -60.0217, fallbackMapImageUrl: '/images/map/아마존-map.jpeg', sortOrder: 1 },
+  { country: '브라질', city: '리우데자네이루', mapCenterLat: -22.9068, mapCenterLon: -43.1729, fallbackMapImageUrl: '/images/map/default-map.jpeg', sortOrder: 2 },
+  { country: '캐나다', city: '밴쿠버', mapCenterLat: 49.2827, mapCenterLon: -123.1207, fallbackMapImageUrl: '/images/map/default-map.jpeg', sortOrder: 1 },
+  { country: '태국', city: '푸켓', mapCenterLat: 7.8804, mapCenterLon: 98.3923, fallbackMapImageUrl: '/images/map/default-map.jpeg', sortOrder: 1 },
+  { country: '덴마크', city: '코펜하겐', mapCenterLat: 55.6761, mapCenterLon: 12.5683, fallbackMapImageUrl: '/images/map/default-map.jpeg', sortOrder: 1 },
+  { country: '마다가스카르', city: '안타나나리보', mapCenterLat: -18.8792, mapCenterLon: 47.5079, fallbackMapImageUrl: '/images/map/default-map.jpeg', sortOrder: 1 },
 ];
 
 export function initializeDatabase() {
@@ -110,6 +145,17 @@ export function initializeDatabase() {
       price INTEGER NOT NULL DEFAULT 12800,
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (creator_id) REFERENCES users(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS location_presets (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      country TEXT NOT NULL,
+      city TEXT NOT NULL,
+      map_center_lat REAL NOT NULL,
+      map_center_lon REAL NOT NULL,
+      fallback_map_image_url TEXT NOT NULL DEFAULT '',
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      UNIQUE(country, city)
     );
 
     CREATE TABLE IF NOT EXISTS guidebook_route_points (
@@ -246,6 +292,7 @@ export function initializeDatabase() {
   migrateOrderStatusConstraint();
 
   seedGuidebookMetadata();
+  seedLocationPresetData();
 
   const userCount = db.prepare('SELECT COUNT(*) AS count FROM users').get() as { count: number };
 
@@ -256,17 +303,49 @@ export function initializeDatabase() {
   seedDemoSalesOrders();
 }
 
+function seedLocationPresetData() {
+  const upsertLocationPreset = db.prepare(`
+    INSERT INTO location_presets (
+      country,
+      city,
+      map_center_lat,
+      map_center_lon,
+      fallback_map_image_url,
+      sort_order
+    )
+    VALUES (
+      @country,
+      @city,
+      @mapCenterLat,
+      @mapCenterLon,
+      @fallbackMapImageUrl,
+      @sortOrder
+    )
+    ON CONFLICT(country, city) DO UPDATE SET
+      map_center_lat = excluded.map_center_lat,
+      map_center_lon = excluded.map_center_lon,
+      fallback_map_image_url = excluded.fallback_map_image_url,
+      sort_order = excluded.sort_order
+  `);
+
+  seedLocationPresets.forEach((locationPreset) => {
+    upsertLocationPreset.run(locationPreset);
+  });
+}
+
 function seedGuidebookMetadata() {
   const updateGuidebook = db.prepare(`
     UPDATE guidebooks
-    SET price = @price,
+    SET country = @country,
+        region = @region,
+        price = @price,
         map_center_lat = @mapCenterLat,
         map_center_lon = @mapCenterLon
     WHERE title = @title
   `);
 
-  seedGuidebooks.forEach(({ mapCenterLat, mapCenterLon, price, title }) => {
-    updateGuidebook.run({ mapCenterLat, mapCenterLon, price, title });
+  seedGuidebooks.forEach(({ country, mapCenterLat, mapCenterLon, price, region, title }) => {
+    updateGuidebook.run({ country, mapCenterLat, mapCenterLon, price, region, title });
   });
 }
 

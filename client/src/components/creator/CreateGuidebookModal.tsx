@@ -3,7 +3,7 @@
 import { useEffect, useState, type DragEvent, type PointerEvent } from 'react';
 
 import { getGuidebookMapImageUrl } from '@/features/guidebook/mapProvider';
-import { mapService, type MapPreview } from '@/services/mapService';
+import { mapService, type MapCityOption, type MapPreview } from '@/services/mapService';
 import type { GuidebookRoutePoint } from '@/types';
 
 type CreateGuidebookModalProps = {
@@ -103,11 +103,67 @@ export function CreateGuidebookModal({
     initialDraft?.blocks.length ? initialDraft.blocks : [createEmptyDetailBlock()],
   );
   const [isCreating, setIsCreating] = useState(false);
+  const [cityOptions, setCityOptions] = useState<CreateGuidebookLocationOption[]>(() => (
+    availableLocationOptions.filter((option) => option.country === initialLocation.country)
+  ));
+  const [isCityOptionsLoading, setIsCityOptionsLoading] = useState(false);
   const [mapPreview, setMapPreview] = useState<MapPreview | null>(null);
   const [isMapPreviewLoading, setIsMapPreviewLoading] = useState(false);
   const [validationMessage, setValidationMessage] = useState('');
   const [routePoints, setRoutePoints] = useState(initialDraft?.routePoints.length ? initialDraft.routePoints : initialRoutePoints);
   const selectedMapImageUrl = mapPreview?.mapImageUrl || getGuidebookMapImageUrl(selectedLocation);
+  const selectedCountryCityOptions = cityOptions.length > 0
+    ? cityOptions
+    : availableLocationOptions.filter((option) => option.country === selectedLocation.country);
+
+  function normalizeCityOption(option: MapCityOption): CreateGuidebookLocationOption {
+    return {
+      city: option.city,
+      country: option.country,
+      mapCenterLat: option.mapCenterLat,
+      mapCenterLon: option.mapCenterLon,
+      mapImageUrl: option.mapImageUrl,
+    };
+  }
+
+  useEffect(() => {
+    let isCurrentRequest = true;
+    const fallbackCityOptions = availableLocationOptions.filter((option) => option.country === selectedLocation.country);
+
+    setCityOptions(fallbackCityOptions);
+    setIsCityOptionsLoading(true);
+
+    async function loadCityOptions() {
+      try {
+        const nextCityOptions = await mapService.getCityOptions(selectedLocation.country);
+
+        if (!isCurrentRequest) {
+          return;
+        }
+
+        const normalizedOptions = nextCityOptions.map(normalizeCityOption);
+        setCityOptions(normalizedOptions.length > 0 ? normalizedOptions : fallbackCityOptions);
+
+        if (!normalizedOptions.some((option) => option.city === selectedLocation.city) && normalizedOptions[0]) {
+          setSelectedLocation(normalizedOptions[0]);
+        }
+      } catch {
+        if (isCurrentRequest) {
+          setCityOptions(fallbackCityOptions);
+        }
+      } finally {
+        if (isCurrentRequest) {
+          setIsCityOptionsLoading(false);
+        }
+      }
+    }
+
+    void loadCityOptions();
+
+    return () => {
+      isCurrentRequest = false;
+    };
+  }, [selectedLocation.country]);
 
   useEffect(() => {
     let isCurrentRequest = true;
@@ -293,6 +349,7 @@ export function CreateGuidebookModal({
                   value={selectedLocation.country}
                   onChange={(event) => {
                     const nextLocation = availableLocationOptions.find((option) => option.country === event.target.value) ?? availableLocationOptions[0];
+                    setCityOptions(availableLocationOptions.filter((option) => option.country === nextLocation.country));
                     setSelectedLocation(nextLocation);
                   }}>
                   {[...new Set(availableLocationOptions.map((option) => option.country))].map((country) => (
@@ -304,17 +361,17 @@ export function CreateGuidebookModal({
                 <select
                   value={selectedLocation.city}
                   onChange={(event) => {
-                    const nextLocation = availableLocationOptions.find((option) => option.city === event.target.value) ?? selectedLocation;
+                    const nextLocation = selectedCountryCityOptions.find((option) => option.city === event.target.value) ?? selectedLocation;
                     setSelectedLocation(nextLocation);
                   }}>
-                  {availableLocationOptions
-                    .filter((option) => option.country === selectedLocation.country)
+                  {selectedCountryCityOptions
                     .map((option) => (
                       <option value={option.city} key={option.city}>{option.city}</option>
                     ))}
                 </select>
               </label>
             </div>
+            {isCityOptionsLoading && <p>도시 목록을 불러오는 중입니다.</p>}
           </div>
 
           <div className="create-guidebook-map-wrap">
