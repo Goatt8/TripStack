@@ -1,15 +1,31 @@
 'use client';
 
+import { useEffect } from 'react';
 import { useParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 
 import { AppHeader } from '@/components/common/AppHeader';
 import { CreatorStudioFeed } from '@/components/creator/CreatorStudioFeed';
+import { useAccountStore } from '@/features/account/accountStore';
 import { useGuidebookCatalog } from '@/features/guidebook/hooks/useGuidebookCatalog';
 
 export default function CreatorProfilePage() {
+  const router = useRouter();
   const params = useParams<{ creatorId: string }>();
+  const currentUser = useAccountStore((state) => state.currentUser);
+  const loadCurrentUser = useAccountStore((state) => state.loadCurrentUser);
   const { creators, error, guidebooks, loading } = useGuidebookCatalog();
   const viewedCreatorId = Number(params.creatorId);
+
+  useEffect(() => {
+    loadCurrentUser();
+  }, [loadCurrentUser]);
+
+  useEffect(() => {
+    if (!currentUser) {
+      router.replace('/login');
+    }
+  }, [currentUser, router]);
 
   return (
     <main className="app-shell">

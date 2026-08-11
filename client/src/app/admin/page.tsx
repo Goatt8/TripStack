@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 
 import { AppHeader } from '@/components/common/AppHeader';
 import { TopTabBar } from '@/components/common/TopTabBar';
@@ -8,12 +9,24 @@ import { AdminDashboard } from '@/components/admin/AdminDashboard';
 import { useAccountStore } from '@/features/account/accountStore';
 
 export default function AdminPage() {
+  const router = useRouter();
   const currentUser = useAccountStore((state) => state.currentUser);
   const loadCurrentUser = useAccountStore((state) => state.loadCurrentUser);
 
   useEffect(() => {
     loadCurrentUser();
   }, [loadCurrentUser]);
+
+  useEffect(() => {
+    if (!currentUser) {
+      router.replace('/login');
+      return;
+    }
+
+    if (!currentUser.isAdmin) {
+      router.replace('/consumer');
+    }
+  }, [currentUser, router]);
 
   return (
     <main className="app-shell">

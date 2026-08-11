@@ -1,5 +1,5 @@
 import cors from 'cors';
-import express from 'express';
+import express, { type Request, type Response } from 'express';
 import { randomBytes, scryptSync, timingSafeEqual } from 'node:crypto';
 import { db, initializeDatabase } from './db.js';
 
@@ -174,6 +174,51 @@ function serializeUser(row: UserRow) {
   };
 }
 
+function getRequestUser(request: Request) {
+  const userId = Number(request.header('x-user-id'));
+
+  if (!Number.isInteger(userId)) {
+    return null;
+  }
+
+  const user = db.prepare(`
+    SELECT
+      id,
+      login_id AS loginId,
+      username,
+      email,
+      display_name AS displayName,
+      bio,
+      profile_image_url AS profileImageUrl,
+      avatar_url AS avatarUrl,
+      follower_count AS followerCount,
+      is_admin AS isAdmin,
+      trust_score AS trustScore,
+      created_at AS createdAt,
+      updated_at AS updatedAt
+    FROM users
+    WHERE id = ?
+  `).get(userId) as UserRow | undefined;
+
+  return user ? serializeUser(user) : null;
+}
+
+function requireAdminUser(request: Request, response: Response) {
+  const currentUser = getRequestUser(request);
+
+  if (!currentUser) {
+    response.status(401).json({ message: '로그인이 필요합니다.' });
+    return null;
+  }
+
+  if (!currentUser.isAdmin) {
+    response.status(403).json({ message: '관리자 권한이 필요합니다.' });
+    return null;
+  }
+
+  return currentUser;
+}
+
 function hasColumn(tableName: string, columnName: string) {
   const columns = db.prepare(`PRAGMA table_info(${tableName})`).all() as { name: string }[];
 
@@ -252,6 +297,109 @@ function getPrintCartItems(userId: number) {
     WHERE print_cart_items.user_id = ?
     ORDER BY print_cart_items.created_at DESC
   `).all(userId) as PrintCartItemRow[];
+}
+
+function getUserRows() {
+  const rows = db.prepare(`
+    SELECT
+      id,
+      login_id AS loginId,
+      username,
+      email,
+      display_name AS displayName,
+      bio,
+      profile_image_url AS profileImageUrl,
+      avatar_url AS avatarUrl,
+      follower_count AS followerCount,
+      is_admin AS isAdmin,
+      trust_score AS trustScore,
+      created_at AS createdAt,
+      updated_at AS updatedAt
+    FROM users
+    ORDER BY follower_count DESC
+  `).all() as UserRow[];
+
+  return rows.map(serializeUser);
+}
+
+function getGuidebookRows(region: string | null = null) {
+  const rows = db.prepare(`
+    SELECT
+      guidebooks.id,
+      guidebooks.creator_id AS creatorId,
+      users.username AS creatorName,
+      guidebooks.title,
+      guidebooks.country,
+      guidebooks.region,
+      guidebooks.cover_image_url AS coverImageUrl,
+      guidebooks.map_image_url AS mapImageUrl,
+      guidebooks.map_center_lat AS mapCenterLat,
+      guidebooks.map_center_lon AS mapCenterLon,
+      guidebooks.print_count AS printCount,
+      guidebooks.price,
+      users.follower_count AS followerCount,
+      users.trust_score AS trustScore,
+      COUNT(guidebook_blocks.id) AS blockCount,
+      RANK() OVER (PARTITION BY guidebooks.country, guidebooks.region ORDER BY guidebooks.print_count DESC) AS rankInRegion
+    FROM guidebooks
+    JOIN users ON users.id = guidebooks.creator_id
+    LEFT JOIN guidebook_blocks ON guidebook_blocks.guidebook_id = guidebooks.id
+    WHERE @region IS NULL OR guidebooks.region = @region
+    GROUP BY guidebooks.id
+    ORDER BY guidebooks.print_count DESC, users.trust_score DESC
+  `).all({ region }) as GuidebookRow[];
+
+  const routePoints = db.prepare(`
+    SELECT
+      id,
+      guidebook_id AS guidebookId,
+      point_order AS pointOrder,
+      title,
+      x,
+      y
+    FROM guidebook_route_points
+    ORDER BY point_order ASC
+  `).all() as RoutePointRow[];
+
+  const guidebooks = uniqueBy(rows, (row) => [
+    row.creatorId,
+    row.title,
+    row.country,
+    row.region,
+    row.coverImageUrl,
+  ].join('|'));
+
+  return guidebooks.map((row) => ({
+    ...row,
+    routePoints: routePoints.filter((point) => point.guidebookId === row.id),
+  }));
+}
+
+function getOrderRows() {
+  return db.prepare(`
+    SELECT
+      orders.id,
+      orders.consumer_id AS consumerId,
+      consumers.username AS consumerName,
+      guidebooks.creator_id AS creatorId,
+      creators.username AS creatorName,
+      orders.guidebook_id AS guidebookId,
+      guidebooks.title AS guidebookTitle,
+      guidebooks.country,
+      guidebooks.region,
+      orders.quantity,
+      orders.total_price AS totalPrice,
+      custom_prints.selected_layout_type AS selectedLayoutType,
+      orders.status,
+      orders.shipping_memo AS shippingMemo,
+      orders.created_at AS createdAt
+    FROM orders
+    JOIN users AS consumers ON consumers.id = orders.consumer_id
+    JOIN guidebooks ON guidebooks.id = orders.guidebook_id
+    JOIN users AS creators ON creators.id = guidebooks.creator_id
+    LEFT JOIN custom_prints ON custom_prints.id = orders.custom_print_id
+    ORDER BY orders.created_at DESC
+  `).all();
 }
 
 app.get('/api/health', (_request, response) => {
@@ -374,26 +522,7 @@ app.get('/api/maps/cities', (request, response) => {
 });
 
 app.get('/api/users', (request, response) => {
-  const rows = db.prepare(`
-    SELECT
-      id,
-      login_id AS loginId,
-      username,
-      email,
-      display_name AS displayName,
-      bio,
-      profile_image_url AS profileImageUrl,
-      avatar_url AS avatarUrl,
-      follower_count AS followerCount,
-      is_admin AS isAdmin,
-      trust_score AS trustScore,
-      created_at AS createdAt,
-      updated_at AS updatedAt
-    FROM users
-    ORDER BY follower_count DESC
-  `).all() as UserRow[];
-
-  response.json(uniqueBy(rows.map(serializeUser), (row) => `${row.username}-${row.avatarUrl}`));
+  response.json(uniqueBy(getUserRows(), (row) => `${row.username}-${row.avatarUrl}`));
 });
 
 app.post('/api/auth/signup', (request, response) => {
@@ -703,6 +832,10 @@ app.patch('/api/users/:id/account', (request, response) => {
 });
 
 app.patch('/api/admin/users/:id', (request, response) => {
+  if (!requireAdminUser(request, response)) {
+    return;
+  }
+
   const userId = Number(request.params.id);
   const { displayName, email, isAdmin, profileImageUrl } = request.body as AdminUpdateUserBody;
   const normalizedDisplayName = displayName?.trim();
@@ -771,6 +904,10 @@ app.patch('/api/admin/users/:id', (request, response) => {
 });
 
 app.delete('/api/admin/users/:id', (request, response) => {
+  if (!requireAdminUser(request, response)) {
+    return;
+  }
+
   const userId = Number(request.params.id);
 
   if (!Number.isInteger(userId)) {
@@ -803,58 +940,34 @@ app.delete('/api/admin/users/:id', (request, response) => {
   response.status(204).send();
 });
 
+app.get('/api/admin/users', (request, response) => {
+  if (!requireAdminUser(request, response)) {
+    return;
+  }
+
+  response.json(getUserRows());
+});
+
+app.get('/api/admin/guidebooks', (request, response) => {
+  if (!requireAdminUser(request, response)) {
+    return;
+  }
+
+  response.json(getGuidebookRows());
+});
+
+app.get('/api/admin/orders', (request, response) => {
+  if (!requireAdminUser(request, response)) {
+    return;
+  }
+
+  response.json(getOrderRows());
+});
+
 app.get('/api/guidebooks', (request, response) => {
   const region = request.query.region;
-  const rows = db.prepare(`
-    SELECT
-      guidebooks.id,
-      guidebooks.creator_id AS creatorId,
-      users.username AS creatorName,
-      guidebooks.title,
-      guidebooks.country,
-      guidebooks.region,
-      guidebooks.cover_image_url AS coverImageUrl,
-      guidebooks.map_image_url AS mapImageUrl,
-      guidebooks.map_center_lat AS mapCenterLat,
-      guidebooks.map_center_lon AS mapCenterLon,
-      guidebooks.print_count AS printCount,
-      guidebooks.price,
-      users.follower_count AS followerCount,
-      users.trust_score AS trustScore,
-      COUNT(guidebook_blocks.id) AS blockCount,
-      RANK() OVER (PARTITION BY guidebooks.country, guidebooks.region ORDER BY guidebooks.print_count DESC) AS rankInRegion
-    FROM guidebooks
-    JOIN users ON users.id = guidebooks.creator_id
-    LEFT JOIN guidebook_blocks ON guidebook_blocks.guidebook_id = guidebooks.id
-    WHERE @region IS NULL OR guidebooks.region = @region
-    GROUP BY guidebooks.id
-    ORDER BY guidebooks.print_count DESC, users.trust_score DESC
-  `).all({ region: typeof region === 'string' ? region : null }) as GuidebookRow[];
 
-  const routePoints = db.prepare(`
-    SELECT
-      id,
-      guidebook_id AS guidebookId,
-      point_order AS pointOrder,
-      title,
-      x,
-      y
-    FROM guidebook_route_points
-    ORDER BY point_order ASC
-  `).all() as RoutePointRow[];
-
-  const guidebooks = uniqueBy(rows, (row) => [
-    row.creatorId,
-    row.title,
-    row.country,
-    row.region,
-    row.coverImageUrl,
-  ].join('|'));
-
-  response.json(guidebooks.map((row) => ({
-    ...row,
-    routePoints: routePoints.filter((point) => point.guidebookId === row.id),
-  })));
+  response.json(getGuidebookRows(typeof region === 'string' ? region : null));
 });
 
 app.get('/api/guidebooks/:id/blocks', (request, response) => {
@@ -1237,32 +1350,7 @@ app.delete('/api/guidebooks/:id', (request, response) => {
 });
 
 app.get('/api/orders', (_request, response) => {
-  const rows = db.prepare(`
-    SELECT
-      orders.id,
-      orders.consumer_id AS consumerId,
-      consumers.username AS consumerName,
-      guidebooks.creator_id AS creatorId,
-      creators.username AS creatorName,
-      orders.guidebook_id AS guidebookId,
-      guidebooks.title AS guidebookTitle,
-      guidebooks.country,
-      guidebooks.region,
-      orders.quantity,
-      orders.total_price AS totalPrice,
-      custom_prints.selected_layout_type AS selectedLayoutType,
-      orders.status,
-      orders.shipping_memo AS shippingMemo,
-      orders.created_at AS createdAt
-    FROM orders
-    JOIN users AS consumers ON consumers.id = orders.consumer_id
-    JOIN guidebooks ON guidebooks.id = orders.guidebook_id
-    JOIN users AS creators ON creators.id = guidebooks.creator_id
-    LEFT JOIN custom_prints ON custom_prints.id = orders.custom_print_id
-    ORDER BY orders.created_at DESC
-  `).all();
-
-  response.json(rows);
+  response.json(getOrderRows());
 });
 
 app.post('/api/orders', (request, response) => {
@@ -1340,6 +1428,10 @@ app.post('/api/orders', (request, response) => {
 });
 
 app.patch('/api/orders/:id/status', (request, response) => {
+  if (!requireAdminUser(request, response)) {
+    return;
+  }
+
   const { status } = request.body as { status?: string };
 
   if (!['pending', 'producing', 'shipping', 'completed'].includes(status ?? '')) {

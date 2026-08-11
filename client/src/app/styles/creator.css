@@ -554,6 +554,7 @@
 
 .create-guidebook-fieldset-title > div {
   display: flex;
+  align-items: center;
   gap: 5px;
 }
 
@@ -561,6 +562,14 @@
   color: #344054;
   font-size: 11px;
   font-weight: 900;
+  line-height: 1;
+}
+
+.create-guidebook-fieldset-title span {
+  color: #101828;
+  font-size: 15px;
+  font-weight: 900;
+  line-height: 1;
 }
 
 .create-guidebook-fieldset-title button {
@@ -780,10 +789,30 @@
 }
 
 .create-guidebook-preview-map {
+  position: relative;
   overflow: hidden;
   border: 1px solid #eef2f7;
   border-radius: 8px;
   background: #f2f4f7;
+}
+
+.create-guidebook-preview-route-point {
+  position: absolute;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border: 2px solid #ffffff;
+  border-radius: 999px;
+  background: #2563eb;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 900;
+  line-height: 1;
+  transform: translate(-50%, -50%);
+  box-shadow: 0 8px 18px rgb(16 24 40 / 22%);
+  pointer-events: none;
 }
 
 .create-guidebook-preview-pages {

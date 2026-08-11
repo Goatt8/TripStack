@@ -533,6 +533,24 @@ export function CreateGuidebookModal({
                 </div>
                 <div className="create-guidebook-preview-map">
                   <img src={selectedMapImageUrl} alt={`${selectedLocation.city} 지도 미리보기`} />
+                  <svg className="create-guidebook-route-line" viewBox="0 0 100 100" preserveAspectRatio="none">
+                    <polyline
+                      points={routePoints.map((point) => `${point.x},${point.y}`).join(' ')}
+                      fill="none"
+                      stroke="currentColor"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="1.8"
+                    />
+                  </svg>
+                  {routePoints.map((point, index) => (
+                    <div
+                      className="create-guidebook-preview-route-point"
+                      key={point.id}
+                      style={{ left: `${point.x}%`, top: `${point.y}%` }}>
+                      {index + 1}
+                    </div>
+                  ))}
                 </div>
                 <div className="create-guidebook-preview-pages">
                   {detailBlocks.map((block, index) => (

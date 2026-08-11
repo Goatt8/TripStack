@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from 'react';
 
 import { useAccountStore } from '@/features/account/accountStore';
 import { adminService } from '@/services/adminService';
-import { guidebookService } from '@/services/guidebookService';
 import type { Guidebook, Order, User } from '@/types';
 
 function formatCurrency(value: number) {
@@ -60,9 +59,9 @@ export function AdminDashboard() {
         setLoading(true);
         setErrorMessage('');
         const [userData, guidebookData, orderData] = await Promise.all([
-          guidebookService.getCreators(),
-          guidebookService.getGuidebooks(),
-          guidebookService.getOrders(),
+          adminService.getUsers(),
+          adminService.getGuidebooks(),
+          adminService.getOrders(),
         ]);
         setUsers(userData);
         setGuidebooks(guidebookData);
@@ -115,7 +114,7 @@ export function AdminDashboard() {
   async function updateOrderStatus(order: Order, status: Order['status']) {
     try {
       setErrorMessage('');
-      const updatedOrder = await guidebookService.updateOrderStatus(order.id, status);
+      const updatedOrder = await adminService.updateOrderStatus(order.id, status);
       setOrders((previous) => previous.map((item) => (item.id === updatedOrder.id ? updatedOrder : item)));
     } catch {
       setErrorMessage('주문 상태를 변경하지 못했습니다.');

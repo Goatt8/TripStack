@@ -1,5 +1,5 @@
 import { request } from '@/services/apiClient';
-import type { User } from '@/types';
+import type { Guidebook, Order, User } from '@/types';
 
 export type AdminUpdateUserPayload = {
   displayName: string;
@@ -9,6 +9,15 @@ export type AdminUpdateUserPayload = {
 };
 
 export const adminService = {
+  getUsers() {
+    return request<User[]>('/admin/users');
+  },
+  getGuidebooks() {
+    return request<Guidebook[]>('/admin/guidebooks');
+  },
+  getOrders() {
+    return request<Order[]>('/admin/orders');
+  },
   updateUser(userId: number, payload: AdminUpdateUserPayload) {
     return request<User>(`/admin/users/${userId}`, {
       method: 'PATCH',
@@ -18,6 +27,12 @@ export const adminService = {
   deleteUser(userId: number) {
     return request<void>(`/admin/users/${userId}`, {
       method: 'DELETE',
+    });
+  },
+  updateOrderStatus(orderId: number, status: Order['status']) {
+    return request<Order>(`/orders/${orderId}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status }),
     });
   },
 };
