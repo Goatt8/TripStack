@@ -23,6 +23,8 @@ export type Guidebook = {
   region: string;
   coverImageUrl: string;
   mapImageUrl: string;
+  mapCenterLat: number | null;
+  mapCenterLon: number | null;
   printCount: number;
   price: number;
   rankInRegion: number;

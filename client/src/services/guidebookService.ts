@@ -8,6 +8,8 @@ export type CreateGuidebookPayload = {
   region: string;
   coverImageUrl: string;
   mapImageUrl: string;
+  mapCenterLat?: number | null;
+  mapCenterLon?: number | null;
   routePoints: Array<Pick<GuidebookRoutePoint, 'pointOrder' | 'title' | 'x' | 'y'>>;
   blocks: Array<{
     placeName: string;

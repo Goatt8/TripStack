@@ -5,6 +5,7 @@ services:
     environment:
       PORT: ${API_PORT:-4000}
       DATABASE_PATH: /app/data/tripstack.db
+      GEOAPIFY_API_KEY: ${GEOAPIFY_API_KEY:-}
     volumes:
       - ./data:/app/data
     ports:
@@ -15,6 +16,7 @@ services:
       context: ./client
     environment:
       NEXT_PUBLIC_API_URL: http://localhost:${API_PORT:-4000}/api
+      NEXT_PUBLIC_GEOAPIFY_API_KEY: ${NEXT_PUBLIC_GEOAPIFY_API_KEY:-}
     ports:
       - "${WEB_PORT:-3000}:3000"
     depends_on:

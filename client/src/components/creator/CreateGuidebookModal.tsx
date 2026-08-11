@@ -1,11 +1,14 @@
 'use client';
 
-import { useState, type DragEvent, type PointerEvent } from 'react';
+import { useEffect, useState, type DragEvent, type PointerEvent } from 'react';
 
+import { getGuidebookMapImageUrl } from '@/features/guidebook/mapProvider';
+import { mapService, type MapPreview } from '@/services/mapService';
 import type { GuidebookRoutePoint } from '@/types';
 
 type CreateGuidebookModalProps = {
   initialDraft?: CreateGuidebookDraft;
+  locationOptions: CreateGuidebookLocationOption[];
   mode?: 'create' | 'edit';
   onCreate: (guidebook: CreateGuidebookDraft) => Promise<void> | void;
   onClose: () => void;
@@ -16,6 +19,8 @@ export type CreateGuidebookDraft = {
   region: string;
   coverImageUrl: string;
   mapImageUrl: string;
+  mapCenterLat: number | null;
+  mapCenterLon: number | null;
   routePoints: GuidebookRoutePoint[];
   blocks: CreateGuidebookBlockDraft[];
   title: string;
@@ -30,12 +35,21 @@ export type CreateGuidebookBlockDraft = {
   content: string;
 };
 
-const locationOptions = [
-  { country: '이탈리아', city: '로마', mapImageUrl: '/images/map/로마-map.jpeg' },
-  { country: '프랑스', city: '파리', mapImageUrl: '/images/map/파리-map.jpeg' },
-  { country: '일본', city: '오사카', mapImageUrl: '/images/map/오사카-map.jpeg' },
-  { country: '브라질', city: '아마존', mapImageUrl: '/images/map/아마존-map.jpeg' },
-];
+export type CreateGuidebookLocationOption = {
+  city: string;
+  country: string;
+  mapCenterLat?: number | null;
+  mapCenterLon?: number | null;
+  mapImageUrl: string;
+};
+
+const fallbackLocationOption: CreateGuidebookLocationOption = {
+  city: '파리',
+  country: '프랑스',
+  mapCenterLat: 48.8566,
+  mapCenterLon: 2.3522,
+  mapImageUrl: '/images/map/파리-map.jpeg',
+};
 
 const initialRoutePoints: GuidebookRoutePoint[] = [
   { id: 1, pointOrder: 1, title: '', x: 22, y: 32 },
@@ -60,24 +74,82 @@ function clampPercent(value: number) {
   return Math.min(100, Math.max(0, value));
 }
 
-export function CreateGuidebookModal({ initialDraft, mode = 'create', onClose, onCreate }: CreateGuidebookModalProps) {
+export function CreateGuidebookModal({
+  initialDraft,
+  locationOptions,
+  mode = 'create',
+  onClose,
+  onCreate,
+}: CreateGuidebookModalProps) {
   const [videoUrl, setVideoUrl] = useState('');
+  const baseLocationOptions = locationOptions.length > 0 ? locationOptions : [fallbackLocationOption];
   const initialLocation = initialDraft
-    ? { country: initialDraft.country, city: initialDraft.region, mapImageUrl: initialDraft.mapImageUrl }
-    : locationOptions[1];
-  const availableLocationOptions = locationOptions.some((option) => (
+    ? {
+        country: initialDraft.country,
+        city: initialDraft.region,
+        mapCenterLat: initialDraft.mapCenterLat,
+        mapCenterLon: initialDraft.mapCenterLon,
+        mapImageUrl: initialDraft.mapImageUrl,
+      }
+    : baseLocationOptions[0];
+  const availableLocationOptions = baseLocationOptions.some((option) => (
     option.country === initialLocation.country && option.city === initialLocation.city
   ))
-    ? locationOptions
-    : [initialLocation, ...locationOptions];
+    ? baseLocationOptions
+    : [initialLocation, ...baseLocationOptions];
   const [selectedLocation, setSelectedLocation] = useState(initialLocation);
   const [activePointId, setActivePointId] = useState<number | null>(null);
   const [detailBlocks, setDetailBlocks] = useState<CreateGuidebookBlockDraft[]>(
     initialDraft?.blocks.length ? initialDraft.blocks : [createEmptyDetailBlock()],
   );
   const [isCreating, setIsCreating] = useState(false);
+  const [mapPreview, setMapPreview] = useState<MapPreview | null>(null);
+  const [isMapPreviewLoading, setIsMapPreviewLoading] = useState(false);
   const [validationMessage, setValidationMessage] = useState('');
   const [routePoints, setRoutePoints] = useState(initialDraft?.routePoints.length ? initialDraft.routePoints : initialRoutePoints);
+  const selectedMapImageUrl = mapPreview?.mapImageUrl || getGuidebookMapImageUrl(selectedLocation);
+
+  useEffect(() => {
+    let isCurrentRequest = true;
+
+    async function loadMapPreview() {
+      setIsMapPreviewLoading(true);
+
+      try {
+        const preview = await mapService.getMapPreview({
+          country: selectedLocation.country,
+          fallbackLat: selectedLocation.mapCenterLat,
+          fallbackLon: selectedLocation.mapCenterLon,
+          fallbackMapImageUrl: selectedLocation.mapImageUrl,
+          region: selectedLocation.city,
+        });
+
+        if (isCurrentRequest) {
+          setMapPreview(preview);
+        }
+      } catch {
+        if (isCurrentRequest) {
+          setMapPreview(null);
+        }
+      } finally {
+        if (isCurrentRequest) {
+          setIsMapPreviewLoading(false);
+        }
+      }
+    }
+
+    void loadMapPreview();
+
+    return () => {
+      isCurrentRequest = false;
+    };
+  }, [
+    selectedLocation.city,
+    selectedLocation.country,
+    selectedLocation.mapCenterLat,
+    selectedLocation.mapCenterLon,
+    selectedLocation.mapImageUrl,
+  ]);
 
   function readVideo() {
     setDetailBlocks((previous) => previous.map((block, index) => (
@@ -164,7 +236,9 @@ export function CreateGuidebookModal({ initialDraft, mode = 'create', onClose, o
         country: selectedLocation.country,
         region: selectedLocation.city,
         coverImageUrl: normalizedBlocks[0]?.imageUrl || '/images/guidebooks/user8-1.jpeg',
-        mapImageUrl: selectedLocation.mapImageUrl,
+        mapImageUrl: mapPreview?.mapImageUrl || selectedLocation.mapImageUrl,
+        mapCenterLat: mapPreview?.mapCenterLat ?? selectedLocation.mapCenterLat ?? null,
+        mapCenterLon: mapPreview?.mapCenterLon ?? selectedLocation.mapCenterLon ?? null,
         routePoints: routePoints.map((point, index) => ({
           ...point,
           pointOrder: index + 1,
@@ -246,14 +320,18 @@ export function CreateGuidebookModal({ initialDraft, mode = 'create', onClose, o
           <div className="create-guidebook-map-wrap">
             <div>
               <strong>{selectedLocation.city}</strong>
-              <p>{selectedLocation.country} 기준으로 가이드북 맵이 구성됩니다.</p>
+              <p>
+                {isMapPreviewLoading
+                  ? '지도 정보를 불러오는 중입니다.'
+                  : `${selectedLocation.country} 기준으로 가이드북 맵이 구성됩니다.`}
+              </p>
             </div>
             <div
               className="create-guidebook-map"
               onPointerMove={moveActivePoint}
               onPointerUp={() => setActivePointId(null)}
               onPointerLeave={() => setActivePointId(null)}>
-              <img src={selectedLocation.mapImageUrl} alt={`${selectedLocation.city} 지도`} />
+              <img src={selectedMapImageUrl} alt={`${selectedLocation.city} 지도`} />
               <svg className="create-guidebook-route-line" viewBox="0 0 100 100" preserveAspectRatio="none">
                 <polyline
                   points={routePoints.map((point) => `${point.x},${point.y}`).join(' ')}

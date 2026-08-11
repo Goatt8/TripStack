@@ -1,7 +1,31 @@
 import Database from 'better-sqlite3';
-import { mkdirSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { randomBytes, scryptSync } from 'node:crypto';
+
+function loadLocalEnvironment() {
+  const envPath = resolve(process.cwd(), '../.env');
+
+  if (!existsSync(envPath)) {
+    return;
+  }
+
+  readFileSync(envPath, 'utf8')
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line && !line.startsWith('#') && line.includes('='))
+    .forEach((line) => {
+      const separatorIndex = line.indexOf('=');
+      const key = line.slice(0, separatorIndex).trim();
+      const value = line.slice(separatorIndex + 1).trim();
+
+      if (key && process.env[key] === undefined) {
+        process.env[key] = value;
+      }
+    });
+}
+
+loadLocalEnvironment();
 
 const databasePath = process.env.DATABASE_PATH ?? '../data/tripstack.db';
 mkdirSync(dirname(resolve(databasePath)), { recursive: true });
@@ -31,24 +55,26 @@ type SeedGuidebook = {
   region: string;
   coverImageUrl: string;
   mapImageUrl: string;
+  mapCenterLat: number;
+  mapCenterLon: number;
   printCount: number;
   price: number;
   blockCount: number;
 };
 
 const seedGuidebooks: SeedGuidebook[] = [
-  { creatorId: 1, title: '이탈리아 인생 여행지', country: '이탈리아', region: '로마', coverImageUrl: '/images/guidebooks/user1-1.jpeg', mapImageUrl: '/images/map/로마-map.jpeg', printCount: 1432000, price: 1480, blockCount: 4 },
-  { creatorId: 2, title: '스위스 인터라켄에서 일어난 일', country: '스위스', region: '인터라켄', coverImageUrl: '/images/guidebooks/user2-1.jpeg', mapImageUrl: '/images/map/파리-map.jpeg', printCount: 928000, price: 1500, blockCount: 4 },
-  { creatorId: 3, title: '오키나와 드라이브 코스', country: '일본', region: '오키나와', coverImageUrl: '/images/guidebooks/user3-1.jpeg', mapImageUrl: '/images/map/오사카-map.jpeg', printCount: 814000, price: 1280, blockCount: 4 },
-  { creatorId: 4, title: '태국 푸켓에서 수영하기', country: '태국', region: '푸켓', coverImageUrl: '/images/guidebooks/user4-1.jpeg', mapImageUrl: '/images/map/아마존-map.jpeg', printCount: 672000, price: 1280, blockCount: 5 },
-  { creatorId: 5, title: '사진으로 따라가는 사파리 여행', country: '마다가스카르', region: '안타나나리보', coverImageUrl: '/images/guidebooks/user5-1.jpeg', mapImageUrl: '/images/map/아마존-map.jpeg', printCount: 5340, price: 16800, blockCount: 4 },
-  { creatorId: 6, title: '스위스에서 기차여행', country: '스위스', region: '제네바', coverImageUrl: '/images/guidebooks/user6-1.jpeg', mapImageUrl: '/images/map/파리-map.jpeg', printCount: 421000, price: 1380, blockCount: 3 },
-  { creatorId: 7, title: '여름 계곡 추천 서울근교', country: '대한민국', region: '강원도', coverImageUrl: '/images/guidebooks/user7-1.jpeg', mapImageUrl: '/images/map/오사카-map.jpeg', printCount: 318000, price: 2800, blockCount: 4 },
-  { creatorId: 8, title: '수박이와 가는 프랑스', country: '프랑스', region: '파리', coverImageUrl: '/images/guidebooks/user8-1.jpeg', mapImageUrl: '/images/map/파리-map.jpeg', printCount: 28700000, price: 1280, blockCount: 6 },
-  { creatorId: 9, title: '캐나다 호수 vlog', country: '캐나다', region: '벤쿠버', coverImageUrl: '/images/guidebooks/user9-1.jpeg', mapImageUrl: '/images/map/파리-map.jpeg', printCount: 245000, price: 1180, blockCount: 6 },
-  { creatorId: 10, title: '크리스마스를 즐기려면', country: '덴마크', region: '코펜하겐', coverImageUrl: '/images/guidebooks/user10-1.jpeg', mapImageUrl: '/images/map/로마-map.jpeg', printCount: 218000, price: 1380, blockCount: 6 },
-  { creatorId: 11, title: '저장해두고 보는 오사카 여행', country: '일본', region: '오사카', coverImageUrl: '/images/guidebooks/user11-1.jpeg', mapImageUrl: '/images/map/오사카-map.jpeg', printCount: 1960000, price: 1280, blockCount: 6 },
-  { creatorId: 12, title: '아마존 추천 여행코스', country: '브라질', region: '아마존', coverImageUrl: '/images/guidebooks/user12-1.jpeg', mapImageUrl: '/images/map/아마존-map.jpeg', printCount: 17200000, price: 1680, blockCount: 6 },
+  { creatorId: 1, title: '이탈리아 인생 여행지', country: '이탈리아', region: '로마', coverImageUrl: '/images/guidebooks/user1-1.jpeg', mapImageUrl: '/images/map/로마-map.jpeg', mapCenterLat: 41.9028, mapCenterLon: 12.4964, printCount: 1432000, price: 1480, blockCount: 4 },
+  { creatorId: 2, title: '스위스 인터라켄에서 일어난 일', country: '스위스', region: '인터라켄', coverImageUrl: '/images/guidebooks/user2-1.jpeg', mapImageUrl: '/images/map/파리-map.jpeg', mapCenterLat: 46.6863, mapCenterLon: 7.8632, printCount: 928000, price: 1500, blockCount: 4 },
+  { creatorId: 3, title: '오키나와 드라이브 코스', country: '일본', region: '오키나와', coverImageUrl: '/images/guidebooks/user3-1.jpeg', mapImageUrl: '/images/map/오사카-map.jpeg', mapCenterLat: 26.2124, mapCenterLon: 127.6792, printCount: 814000, price: 1280, blockCount: 4 },
+  { creatorId: 4, title: '태국 푸켓에서 수영하기', country: '태국', region: '푸켓', coverImageUrl: '/images/guidebooks/user4-1.jpeg', mapImageUrl: '/images/map/아마존-map.jpeg', mapCenterLat: 7.8804, mapCenterLon: 98.3923, printCount: 672000, price: 1280, blockCount: 5 },
+  { creatorId: 5, title: '사진으로 따라가는 사파리 여행', country: '마다가스카르', region: '안타나나리보', coverImageUrl: '/images/guidebooks/user5-1.jpeg', mapImageUrl: '/images/map/아마존-map.jpeg', mapCenterLat: -18.8792, mapCenterLon: 47.5079, printCount: 5340, price: 16800, blockCount: 4 },
+  { creatorId: 6, title: '스위스에서 기차여행', country: '스위스', region: '제네바', coverImageUrl: '/images/guidebooks/user6-1.jpeg', mapImageUrl: '/images/map/파리-map.jpeg', mapCenterLat: 46.2044, mapCenterLon: 6.1432, printCount: 421000, price: 1380, blockCount: 3 },
+  { creatorId: 7, title: '여름 계곡 추천 서울근교', country: '대한민국', region: '강원도', coverImageUrl: '/images/guidebooks/user7-1.jpeg', mapImageUrl: '/images/map/오사카-map.jpeg', mapCenterLat: 37.8228, mapCenterLon: 128.1555, printCount: 318000, price: 2800, blockCount: 4 },
+  { creatorId: 8, title: '수박이와 가는 프랑스', country: '프랑스', region: '파리', coverImageUrl: '/images/guidebooks/user8-1.jpeg', mapImageUrl: '/images/map/파리-map.jpeg', mapCenterLat: 48.8566, mapCenterLon: 2.3522, printCount: 28700000, price: 1280, blockCount: 6 },
+  { creatorId: 9, title: '캐나다 호수 vlog', country: '캐나다', region: '벤쿠버', coverImageUrl: '/images/guidebooks/user9-1.jpeg', mapImageUrl: '/images/map/파리-map.jpeg', mapCenterLat: 49.2827, mapCenterLon: -123.1207, printCount: 245000, price: 1180, blockCount: 6 },
+  { creatorId: 10, title: '크리스마스를 즐기려면', country: '덴마크', region: '코펜하겐', coverImageUrl: '/images/guidebooks/user10-1.jpeg', mapImageUrl: '/images/map/로마-map.jpeg', mapCenterLat: 55.6761, mapCenterLon: 12.5683, printCount: 218000, price: 1380, blockCount: 6 },
+  { creatorId: 11, title: '저장해두고 보는 오사카 여행', country: '일본', region: '오사카', coverImageUrl: '/images/guidebooks/user11-1.jpeg', mapImageUrl: '/images/map/오사카-map.jpeg', mapCenterLat: 34.6937, mapCenterLon: 135.5023, printCount: 1960000, price: 1280, blockCount: 6 },
+  { creatorId: 12, title: '아마존 추천 여행코스', country: '브라질', region: '아마존', coverImageUrl: '/images/guidebooks/user12-1.jpeg', mapImageUrl: '/images/map/아마존-map.jpeg', mapCenterLat: -3.4653, mapCenterLon: -62.2159, printCount: 17200000, price: 1680, blockCount: 6 },
 ];
 
 export function initializeDatabase() {
@@ -78,6 +104,8 @@ export function initializeDatabase() {
       region TEXT NOT NULL,
       cover_image_url TEXT NOT NULL,
       map_image_url TEXT NOT NULL DEFAULT '',
+      map_center_lat REAL,
+      map_center_lon REAL,
       print_count INTEGER NOT NULL DEFAULT 0,
       price INTEGER NOT NULL DEFAULT 12800,
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -193,6 +221,14 @@ export function initializeDatabase() {
     db.prepare("ALTER TABLE guidebooks ADD COLUMN map_image_url TEXT NOT NULL DEFAULT ''").run();
   }
 
+  if (!guidebookColumns.some((column) => column.name === 'map_center_lat')) {
+    db.prepare('ALTER TABLE guidebooks ADD COLUMN map_center_lat REAL').run();
+  }
+
+  if (!guidebookColumns.some((column) => column.name === 'map_center_lon')) {
+    db.prepare('ALTER TABLE guidebooks ADD COLUMN map_center_lon REAL').run();
+  }
+
   if (!guidebookColumns.some((column) => column.name === 'price')) {
     db.prepare('ALTER TABLE guidebooks ADD COLUMN price INTEGER NOT NULL DEFAULT 12800').run();
   }
@@ -209,7 +245,7 @@ export function initializeDatabase() {
 
   migrateOrderStatusConstraint();
 
-  seedGuidebookPrices();
+  seedGuidebookMetadata();
 
   const userCount = db.prepare('SELECT COUNT(*) AS count FROM users').get() as { count: number };
 
@@ -220,9 +256,18 @@ export function initializeDatabase() {
   seedDemoSalesOrders();
 }
 
-function seedGuidebookPrices() {
-  const updatePrice = db.prepare('UPDATE guidebooks SET price = @price WHERE title = @title');
-  seedGuidebooks.forEach(({ price, title }) => updatePrice.run({ price, title }));
+function seedGuidebookMetadata() {
+  const updateGuidebook = db.prepare(`
+    UPDATE guidebooks
+    SET price = @price,
+        map_center_lat = @mapCenterLat,
+        map_center_lon = @mapCenterLon
+    WHERE title = @title
+  `);
+
+  seedGuidebooks.forEach(({ mapCenterLat, mapCenterLon, price, title }) => {
+    updateGuidebook.run({ mapCenterLat, mapCenterLon, price, title });
+  });
 }
 
 function migrateOrderStatusConstraint() {
@@ -470,8 +515,8 @@ function seedDatabase() {
   }).lastInsertRowid);
 
   const insertGuidebook = db.prepare(`
-    INSERT INTO guidebooks (creator_id, title, country, region, cover_image_url, map_image_url, print_count, price)
-    VALUES (@creatorId, @title, @country, @region, @coverImageUrl, @mapImageUrl, @printCount, @price)
+    INSERT INTO guidebooks (creator_id, title, country, region, cover_image_url, map_image_url, map_center_lat, map_center_lon, print_count, price)
+    VALUES (@creatorId, @title, @country, @region, @coverImageUrl, @mapImageUrl, @mapCenterLat, @mapCenterLon, @printCount, @price)
   `);
 
   const guidebookIds = seedGuidebooks.map((guidebook) => {

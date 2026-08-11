@@ -3,7 +3,11 @@
 import { useEffect, useState } from 'react';
 
 import { TopTabBar } from '@/components/common/TopTabBar';
-import { CreateGuidebookModal, type CreateGuidebookDraft } from '@/components/creator/CreateGuidebookModal';
+import {
+  CreateGuidebookModal,
+  type CreateGuidebookDraft,
+  type CreateGuidebookLocationOption,
+} from '@/components/creator/CreateGuidebookModal';
 import { GuidebookPrintDetailModal } from '@/components/guidebook/GuidebookPrintDetailModal';
 import { useAccountStore } from '@/features/account/accountStore';
 import { usePrintCartStore } from '@/features/basket/printCartStore';
@@ -39,6 +43,34 @@ function HeartIcon() {
       <path d="M20.5 8.9c0 5.3-8.5 10-8.5 10s-8.5-4.7-8.5-10A4.7 4.7 0 0 1 12 6a4.7 4.7 0 0 1 8.5 2.9Z" />
     </svg>
   );
+}
+
+function createLocationOptionsFromGuidebooks(guidebooks: Guidebook[]): CreateGuidebookLocationOption[] {
+  const locationMap = new Map<string, CreateGuidebookLocationOption>();
+
+  guidebooks.forEach((guidebook) => {
+    if (!guidebook.country || !guidebook.region || !guidebook.mapImageUrl) {
+      return;
+    }
+
+    const key = `${guidebook.country}::${guidebook.region}`;
+
+    if (!locationMap.has(key)) {
+      locationMap.set(key, {
+        city: guidebook.region,
+        country: guidebook.country,
+        mapCenterLat: guidebook.mapCenterLat,
+        mapCenterLon: guidebook.mapCenterLon,
+        mapImageUrl: guidebook.mapImageUrl,
+      });
+    }
+  });
+
+  return [...locationMap.values()].sort((first, second) => (
+    first.country === second.country
+      ? first.city.localeCompare(second.city, 'ko')
+      : first.country.localeCompare(second.country, 'ko')
+  ));
 }
 
 export function CreatorStudioFeed({ creators, guidebooks, viewedCreatorId }: CreatorStudioFeedProps) {
@@ -116,6 +148,7 @@ export function CreatorStudioFeed({ creators, guidebooks, viewedCreatorId }: Cre
 
   const availableGuidebooks = (isOwnCreator ? [...createdGuidebooks, ...guidebooks] : guidebooks)
     .map((guidebook) => updatedGuidebooks[guidebook.id] ?? guidebook);
+  const locationOptions = createLocationOptionsFromGuidebooks(availableGuidebooks);
   const creatorGuidebooks = availableGuidebooks.filter((guidebook) => {
     if (guidebook.creatorId !== creator.id) {
       return false;
@@ -212,6 +245,8 @@ export function CreatorStudioFeed({ creators, guidebooks, viewedCreatorId }: Cre
         region: draft.region,
         coverImageUrl: draft.coverImageUrl,
         mapImageUrl: draft.mapImageUrl,
+        mapCenterLat: draft.mapCenterLat,
+        mapCenterLon: draft.mapCenterLon,
         routePoints: draft.routePoints.map((point) => ({
           pointOrder: point.pointOrder,
           title: point.title,
@@ -245,6 +280,8 @@ export function CreatorStudioFeed({ creators, guidebooks, viewedCreatorId }: Cre
       region: draft.region,
       coverImageUrl: draft.coverImageUrl,
       mapImageUrl: draft.mapImageUrl,
+      mapCenterLat: draft.mapCenterLat,
+      mapCenterLon: draft.mapCenterLon,
       routePoints: draft.routePoints.map((point) => ({
         pointOrder: point.pointOrder,
         title: point.title,
@@ -277,6 +314,8 @@ export function CreatorStudioFeed({ creators, guidebooks, viewedCreatorId }: Cre
       country: guidebook.country,
       coverImageUrl: guidebook.coverImageUrl,
       mapImageUrl: guidebook.mapImageUrl,
+      mapCenterLat: guidebook.mapCenterLat,
+      mapCenterLon: guidebook.mapCenterLon,
       region: guidebook.region,
       routePoints: guidebook.routePoints,
       title: guidebook.title,
@@ -393,6 +432,7 @@ export function CreatorStudioFeed({ creators, guidebooks, viewedCreatorId }: Cre
       {isCreateGuidebookOpen && (
         <CreateGuidebookModal
           initialDraft={editingGuidebook ? createEditingDraft(editingGuidebook, editingBlocks) : undefined}
+          locationOptions={locationOptions}
           mode={editingGuidebook ? 'edit' : 'create'}
           onClose={() => {
             setEditingGuidebook(null);

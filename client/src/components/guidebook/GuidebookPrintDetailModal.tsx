@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 
 import { useAccountStore } from '@/features/account/accountStore';
 import { usePrintCartStore } from '@/features/basket/printCartStore';
+import { getGuidebookMapImageUrl } from '@/features/guidebook/mapProvider';
 import type { Guidebook, GuidebookBlock, User } from '@/types';
 
 type GuidebookPrintDetailModalProps = {
@@ -43,6 +44,7 @@ export function GuidebookPrintDetailModal({
   const loadCart = usePrintCartStore((state) => state.loadCart);
   const removeGuidebook = usePrintCartStore((state) => state.removeGuidebook);
   const isBasketed = guidebookIds.includes(guidebook.id);
+  const mapImageUrl = getGuidebookMapImageUrl(guidebook);
 
   useEffect(() => {
     if (showBasketAction && currentUser) {
@@ -111,14 +113,14 @@ export function GuidebookPrintDetailModal({
           </div>
         </header>
 
-        {guidebook.mapImageUrl && guidebook.routePoints.length > 0 && (
+        {mapImageUrl && guidebook.routePoints.length > 0 && (
           <section className="print-detail-route">
             <div>
               <span>Route map</span>
               <h3>{guidebook.region} 이동 동선</h3>
             </div>
             <div className="print-detail-route-map">
-              <img src={guidebook.mapImageUrl} alt={`${guidebook.region} 이동 동선 지도`} />
+              <img src={mapImageUrl} alt={`${guidebook.region} 이동 동선 지도`} />
               <svg className="print-detail-route-line" viewBox="0 0 100 100" preserveAspectRatio="none">
                 <polyline
                   points={guidebook.routePoints.map((point) => `${point.x},${point.y}`).join(' ')}

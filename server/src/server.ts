@@ -30,6 +30,8 @@ type GuidebookRow = {
   region: string;
   coverImageUrl: string;
   mapImageUrl: string;
+  mapCenterLat: number | null;
+  mapCenterLon: number | null;
   printCount: number;
   price: number;
   followerCount: number;
@@ -56,6 +58,13 @@ type GuidebookBlockRow = {
   imageUrl: string;
 };
 
+type GeoapifyGeocodeResponse = {
+  results?: Array<{
+    lat?: number;
+    lon?: number;
+  }>;
+};
+
 type PrintCartItemRow = {
   id: number;
   userId: number;
@@ -80,6 +89,8 @@ type CreateGuidebookBody = {
   region?: string;
   coverImageUrl?: string;
   mapImageUrl?: string;
+  mapCenterLat?: number | null;
+  mapCenterLon?: number | null;
   routePoints?: Array<{
     pointOrder?: number;
     title?: string;
@@ -108,6 +119,7 @@ type AdminUpdateUserBody = {
 const app = express();
 const port = Number(process.env.PORT ?? 4000);
 const adminSignupCode = process.env.ADMIN_SIGNUP_CODE ?? 'tripstack-admin';
+const geoapifyApiKey = process.env.GEOAPIFY_API_KEY ?? process.env.NEXT_PUBLIC_GEOAPIFY_API_KEY ?? '';
 
 app.use(cors());
 app.use(express.json());
@@ -173,6 +185,8 @@ function getGuidebookById(guidebookId: number) {
       guidebooks.region,
       guidebooks.cover_image_url AS coverImageUrl,
       guidebooks.map_image_url AS mapImageUrl,
+      guidebooks.map_center_lat AS mapCenterLat,
+      guidebooks.map_center_lon AS mapCenterLon,
       guidebooks.print_count AS printCount,
       guidebooks.price,
       users.follower_count AS followerCount,
@@ -236,6 +250,95 @@ function getPrintCartItems(userId: number) {
 
 app.get('/api/health', (_request, response) => {
   response.json({ ok: true, service: 'tripstack-api' });
+});
+
+app.get('/api/maps/preview', async (request, response) => {
+  const country = typeof request.query.country === 'string' ? request.query.country : '';
+  const region = typeof request.query.region === 'string' ? request.query.region : '';
+  const fallbackMapImageUrl = typeof request.query.fallbackMapImageUrl === 'string'
+    ? request.query.fallbackMapImageUrl
+    : '';
+  const fallbackLat = Number(request.query.fallbackLat);
+  const fallbackLon = Number(request.query.fallbackLon);
+
+  if (!country || !region) {
+    response.status(400).json({ message: 'country and region are required.' });
+    return;
+  }
+
+  if (!geoapifyApiKey) {
+    response.json({
+      country,
+      mapCenterLat: Number.isFinite(fallbackLat) ? fallbackLat : null,
+      mapCenterLon: Number.isFinite(fallbackLon) ? fallbackLon : null,
+      mapImageUrl: fallbackMapImageUrl,
+      provider: 'local',
+      region,
+    });
+    return;
+  }
+
+  try {
+    const geocodeUrl = new URL('https://api.geoapify.com/v1/geocode/search');
+    geocodeUrl.searchParams.set('apiKey', geoapifyApiKey);
+    geocodeUrl.searchParams.set('format', 'json');
+    geocodeUrl.searchParams.set('limit', '1');
+    geocodeUrl.searchParams.set('text', `${region}, ${country}`);
+
+    const geocodeResponse = await fetch(geocodeUrl);
+
+    if (!geocodeResponse.ok) {
+      throw new Error(`Geoapify geocode failed: ${geocodeResponse.status}`);
+    }
+
+    const geocodeData = await geocodeResponse.json() as GeoapifyGeocodeResponse;
+    const firstResult = geocodeData.results?.[0];
+    const mapCenterLat = typeof firstResult?.lat === 'number'
+      ? firstResult.lat
+      : Number.isFinite(fallbackLat) ? fallbackLat : null;
+    const mapCenterLon = typeof firstResult?.lon === 'number'
+      ? firstResult.lon
+      : Number.isFinite(fallbackLon) ? fallbackLon : null;
+
+    if (typeof mapCenterLat !== 'number' || typeof mapCenterLon !== 'number') {
+      response.json({
+        country,
+        mapCenterLat,
+        mapCenterLon,
+        mapImageUrl: fallbackMapImageUrl,
+        provider: 'local',
+        region,
+      });
+      return;
+    }
+
+    const staticMapUrl = new URL('https://maps.geoapify.com/v1/staticmap');
+    staticMapUrl.searchParams.set('apiKey', geoapifyApiKey);
+    staticMapUrl.searchParams.set('center', `lonlat:${mapCenterLon},${mapCenterLat}`);
+    staticMapUrl.searchParams.set('height', '540');
+    staticMapUrl.searchParams.set('marker', `lonlat:${mapCenterLon},${mapCenterLat};color:blue;size:medium`);
+    staticMapUrl.searchParams.set('style', 'osm-bright');
+    staticMapUrl.searchParams.set('width', '900');
+    staticMapUrl.searchParams.set('zoom', '11');
+
+    response.json({
+      country,
+      mapCenterLat,
+      mapCenterLon,
+      mapImageUrl: staticMapUrl.toString(),
+      provider: 'geoapify',
+      region,
+    });
+  } catch {
+    response.json({
+      country,
+      mapCenterLat: Number.isFinite(fallbackLat) ? fallbackLat : null,
+      mapCenterLon: Number.isFinite(fallbackLon) ? fallbackLon : null,
+      mapImageUrl: fallbackMapImageUrl,
+      provider: 'local',
+      region,
+    });
+  }
 });
 
 app.get('/api/users', (request, response) => {
@@ -680,6 +783,8 @@ app.get('/api/guidebooks', (request, response) => {
       guidebooks.region,
       guidebooks.cover_image_url AS coverImageUrl,
       guidebooks.map_image_url AS mapImageUrl,
+      guidebooks.map_center_lat AS mapCenterLat,
+      guidebooks.map_center_lon AS mapCenterLon,
       guidebooks.print_count AS printCount,
       guidebooks.price,
       users.follower_count AS followerCount,
@@ -846,6 +951,8 @@ app.post('/api/guidebooks', (request, response) => {
     coverImageUrl,
     creatorId,
     mapImageUrl,
+    mapCenterLat,
+    mapCenterLon,
     region,
     routePoints,
     title,
@@ -867,8 +974,8 @@ app.post('/api/guidebooks', (request, response) => {
 
   const transaction = db.transaction(() => {
     const createdGuidebook = db.prepare(`
-      INSERT INTO guidebooks (creator_id, title, country, region, cover_image_url, map_image_url, print_count, price)
-      VALUES (@creatorId, @title, @country, @region, @coverImageUrl, @mapImageUrl, 0, 12800)
+      INSERT INTO guidebooks (creator_id, title, country, region, cover_image_url, map_image_url, map_center_lat, map_center_lon, print_count, price)
+      VALUES (@creatorId, @title, @country, @region, @coverImageUrl, @mapImageUrl, @mapCenterLat, @mapCenterLon, 0, 12800)
     `).run({
       creatorId,
       title,
@@ -876,6 +983,8 @@ app.post('/api/guidebooks', (request, response) => {
       region,
       coverImageUrl,
       mapImageUrl,
+      mapCenterLat: typeof mapCenterLat === 'number' ? mapCenterLat : null,
+      mapCenterLon: typeof mapCenterLon === 'number' ? mapCenterLon : null,
     });
 
     const guidebookId = Number(createdGuidebook.lastInsertRowid);
@@ -950,6 +1059,8 @@ app.patch('/api/guidebooks/:id', (request, response) => {
     coverImageUrl,
     creatorId,
     mapImageUrl,
+    mapCenterLat,
+    mapCenterLon,
     region,
     routePoints,
     title,
@@ -989,13 +1100,17 @@ app.patch('/api/guidebooks/:id', (request, response) => {
           country = @country,
           region = @region,
           cover_image_url = @coverImageUrl,
-          map_image_url = @mapImageUrl
+          map_image_url = @mapImageUrl,
+          map_center_lat = @mapCenterLat,
+          map_center_lon = @mapCenterLon
       WHERE id = @guidebookId
     `).run({
       country,
       coverImageUrl,
       guidebookId,
       mapImageUrl,
+      mapCenterLat: typeof mapCenterLat === 'number' ? mapCenterLat : null,
+      mapCenterLon: typeof mapCenterLon === 'number' ? mapCenterLon : null,
       region,
       title,
     });
