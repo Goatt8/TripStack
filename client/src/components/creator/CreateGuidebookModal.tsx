@@ -82,6 +82,7 @@ export function CreateGuidebookModal({
   onCreate,
 }: CreateGuidebookModalProps) {
   const [videoUrl, setVideoUrl] = useState('');
+  const [activeStep, setActiveStep] = useState<'basic' | 'pages'>(mode === 'edit' ? 'pages' : 'basic');
   const baseLocationOptions = locationOptions.length > 0 ? locationOptions : [fallbackLocationOption];
   const initialLocation = initialDraft
     ? {
@@ -115,6 +116,9 @@ export function CreateGuidebookModal({
   const selectedCountryCityOptions = cityOptions.length > 0
     ? cityOptions
     : availableLocationOptions.filter((option) => option.country === selectedLocation.country);
+  const firstDetailBlock = detailBlocks[0];
+  const previewCoverImageUrl = firstDetailBlock?.imageUrl;
+  const previewTitle = firstDetailBlock?.title.trim() || `${selectedLocation.city} 새 가이드북`;
 
   function normalizeCityOption(option: MapCityOption): CreateGuidebookLocationOption {
     return {
@@ -264,6 +268,11 @@ export function CreateGuidebookModal({
     });
   }
 
+  function goToPageStep() {
+    setValidationMessage('');
+    setActiveStep('pages');
+  }
+
   async function createGuidebook() {
     const hasEmptyRequiredField = detailBlocks.some((block) => (
       block.title.trim().length === 0
@@ -327,96 +336,117 @@ export function CreateGuidebookModal({
           </button>
         </header>
 
+        <div className="create-guidebook-step-tabs" aria-label="가이드북 생성 단계">
+          <button
+            className={activeStep === 'basic' ? 'active' : ''}
+            type="button"
+            onClick={() => setActiveStep('basic')}>
+            <span>01</span>
+            기초 데이터
+          </button>
+          <button
+            className={activeStep === 'pages' ? 'active' : ''}
+            type="button"
+            onClick={() => setActiveStep('pages')}>
+            <span>02</span>
+            페이지 구성
+          </button>
+        </div>
+
         <div className="create-guidebook-body">
-          <div className="create-guidebook-control-group full">
-            <span>영상 링크</span>
-            <div className="create-guidebook-link-row">
-              <input
-                type="url"
-                placeholder="유튜브 링크 첨부"
-                value={videoUrl}
-                onChange={(event) => setVideoUrl(event.target.value)}
-              />
-              <button type="button" onClick={readVideo}>읽기</button>
-            </div>
-          </div>
+          {activeStep === 'basic' ? (
+            <div className="create-guidebook-basic-step">
+              <div className="create-guidebook-control-group full">
+                <span>영상 링크</span>
+                <div className="create-guidebook-link-row">
+                  <input
+                    type="url"
+                    placeholder="유튜브 링크 첨부"
+                    value={videoUrl}
+                    onChange={(event) => setVideoUrl(event.target.value)}
+                  />
+                  <button type="button" onClick={readVideo}>읽기</button>
+                </div>
+              </div>
 
-          <div className="create-guidebook-control-group compact">
-            <span>지역 · 도시</span>
-            <div className="create-guidebook-location-row">
-              <label>
-                <select
-                  value={selectedLocation.country}
-                  onChange={(event) => {
-                    const nextLocation = availableLocationOptions.find((option) => option.country === event.target.value) ?? availableLocationOptions[0];
-                    setCityOptions(availableLocationOptions.filter((option) => option.country === nextLocation.country));
-                    setSelectedLocation(nextLocation);
-                  }}>
-                  {[...new Set(availableLocationOptions.map((option) => option.country))].map((country) => (
-                    <option value={country} key={country}>{country}</option>
+              <div className="create-guidebook-control-group compact">
+                <span>지역 · 도시</span>
+                <div className="create-guidebook-location-row">
+                  <label>
+                    <select
+                      value={selectedLocation.country}
+                      onChange={(event) => {
+                        const nextLocation = availableLocationOptions.find((option) => option.country === event.target.value) ?? availableLocationOptions[0];
+                        setCityOptions(availableLocationOptions.filter((option) => option.country === nextLocation.country));
+                        setSelectedLocation(nextLocation);
+                      }}>
+                      {[...new Set(availableLocationOptions.map((option) => option.country))].map((country) => (
+                        <option value={country} key={country}>{country}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    <select
+                      value={selectedLocation.city}
+                      onChange={(event) => {
+                        const nextLocation = selectedCountryCityOptions.find((option) => option.city === event.target.value) ?? selectedLocation;
+                        setSelectedLocation(nextLocation);
+                      }}>
+                      {selectedCountryCityOptions
+                        .map((option) => (
+                          <option value={option.city} key={option.city}>{option.city}</option>
+                        ))}
+                    </select>
+                  </label>
+                </div>
+                {isCityOptionsLoading && <p>도시 목록을 불러오는 중입니다.</p>}
+              </div>
+
+              <div className="create-guidebook-map-wrap">
+                <div>
+                  <strong>{selectedLocation.city}</strong>
+                  <p>
+                    {isMapPreviewLoading
+                      ? '지도 정보를 불러오는 중입니다.'
+                      : `${selectedLocation.city} 기준으로 가이드북 맵이 구성됩니다.`}
+                  </p>
+                </div>
+                <div
+                  className="create-guidebook-map"
+                  onPointerMove={moveActivePoint}
+                  onPointerUp={() => setActivePointId(null)}
+                  onPointerLeave={() => setActivePointId(null)}>
+                  <img src={selectedMapImageUrl} alt={`${selectedLocation.city} 지도`} />
+                  <svg className="create-guidebook-route-line" viewBox="0 0 100 100" preserveAspectRatio="none">
+                    <polyline
+                      points={routePoints.map((point) => `${point.x},${point.y}`).join(' ')}
+                      fill="none"
+                      stroke="currentColor"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="1.8"
+                    />
+                  </svg>
+                  {routePoints.map((point, index) => (
+                    <button
+                      className={activePointId === point.id ? 'create-guidebook-route-point active' : 'create-guidebook-route-point'}
+                      key={point.id}
+                      style={{ left: `${point.x}%`, top: `${point.y}%` }}
+                      type="button"
+                      onPointerDown={(event) => {
+                        event.preventDefault();
+                        event.currentTarget.setPointerCapture(event.pointerId);
+                        setActivePointId(point.id);
+                      }}>
+                      {index + 1}
+                    </button>
                   ))}
-                </select>
-              </label>
-              <label>
-                <select
-                  value={selectedLocation.city}
-                  onChange={(event) => {
-                    const nextLocation = selectedCountryCityOptions.find((option) => option.city === event.target.value) ?? selectedLocation;
-                    setSelectedLocation(nextLocation);
-                  }}>
-                  {selectedCountryCityOptions
-                    .map((option) => (
-                      <option value={option.city} key={option.city}>{option.city}</option>
-                    ))}
-                </select>
-              </label>
+                </div>
+              </div>
             </div>
-            {isCityOptionsLoading && <p>도시 목록을 불러오는 중입니다.</p>}
-          </div>
-
-          <div className="create-guidebook-map-wrap">
-            <div>
-              <strong>{selectedLocation.city}</strong>
-              <p>
-                {isMapPreviewLoading
-                  ? '지도 정보를 불러오는 중입니다.'
-                  : `${selectedLocation.country} 기준으로 가이드북 맵이 구성됩니다.`}
-              </p>
-            </div>
-            <div
-              className="create-guidebook-map"
-              onPointerMove={moveActivePoint}
-              onPointerUp={() => setActivePointId(null)}
-              onPointerLeave={() => setActivePointId(null)}>
-              <img src={selectedMapImageUrl} alt={`${selectedLocation.city} 지도`} />
-              <svg className="create-guidebook-route-line" viewBox="0 0 100 100" preserveAspectRatio="none">
-                <polyline
-                  points={routePoints.map((point) => `${point.x},${point.y}`).join(' ')}
-                  fill="none"
-                  stroke="currentColor"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="1.8"
-                />
-              </svg>
-              {routePoints.map((point, index) => (
-                <button
-                  className={activePointId === point.id ? 'create-guidebook-route-point active' : 'create-guidebook-route-point'}
-                  key={point.id}
-                  style={{ left: `${point.x}%`, top: `${point.y}%` }}
-                  type="button"
-                  onPointerDown={(event) => {
-                    event.preventDefault();
-                    event.currentTarget.setPointerCapture(event.pointerId);
-                    setActivePointId(point.id);
-                  }}>
-                  {index + 1}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <section className="create-guidebook-detail-section">
+          ) : (
+            <div className="create-guidebook-compose-step">
+              <section className="create-guidebook-detail-section">
             <div className="create-guidebook-fieldset-title">
               <div>
                 <strong>가이드북 페이지</strong>
@@ -488,16 +518,59 @@ export function CreateGuidebookModal({
                 </div>
               </article>
             ))}
-          </section>
+              </section>
+
+              <aside className="create-guidebook-preview-panel" aria-label="가이드북 실시간 미리보기">
+                <div className="create-guidebook-preview-cover">
+                  {previewCoverImageUrl && (
+                    <img src={previewCoverImageUrl} alt="가이드북 타이틀 화면 미리보기" />
+                  )}
+                  <div>
+                    <span>Title</span>
+                    <strong>{previewTitle}</strong>
+                    <small>{selectedLocation.city} · {selectedLocation.country}</small>
+                  </div>
+                </div>
+                <div className="create-guidebook-preview-map">
+                  <img src={selectedMapImageUrl} alt={`${selectedLocation.city} 지도 미리보기`} />
+                </div>
+                <div className="create-guidebook-preview-pages">
+                  {detailBlocks.map((block, index) => (
+                    <article key={block.id}>
+                      {block.imageUrl && (
+                        <figure>
+                          <img src={block.imageUrl} alt={`${block.title || `Page ${index + 1}`} 미리보기`} />
+                        </figure>
+                      )}
+                      <div>
+                        <span>Page {index + 1}</span>
+                        <strong>{block.subtitle.trim() || selectedLocation.city}</strong>
+                        <p>{block.content.trim() || '페이지 내용을 입력하면 이 영역에 실시간으로 표시됩니다.'}</p>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              </aside>
+            </div>
+          )}
         </div>
 
         <footer className="create-guidebook-footer">
           {validationMessage && <p role="alert">{validationMessage}</p>}
           <div>
-            <button type="button" onClick={onClose}>취소</button>
-            <button type="button" className="primary" onClick={() => void createGuidebook()} disabled={isCreating}>
-              {isCreating ? (mode === 'edit' ? '수정 중' : '생성 중') : (mode === 'edit' ? '수정' : '생성')}
-            </button>
+            {activeStep === 'basic' ? (
+              <>
+                <button type="button" onClick={onClose}>취소</button>
+                <button type="button" className="primary" onClick={goToPageStep}>다음</button>
+              </>
+            ) : (
+              <>
+                <button type="button" onClick={() => setActiveStep('basic')}>이전</button>
+                <button type="button" className="primary" onClick={() => void createGuidebook()} disabled={isCreating}>
+                  {isCreating ? (mode === 'edit' ? '수정 중' : '생성 중') : (mode === 'edit' ? '수정' : '생성')}
+                </button>
+              </>
+            )}
           </div>
         </footer>
       </section>
