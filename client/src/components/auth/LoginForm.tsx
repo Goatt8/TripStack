@@ -7,6 +7,7 @@ import { useState } from 'react';
 import { SignupModal } from '@/components/auth/SignupModal';
 import { AppHeader } from '@/components/common/AppHeader';
 import { useAccountStore } from '@/features/account/accountStore';
+import { ApiError } from '@/services/apiClient';
 import { authService } from '@/services/authService';
 import type { AuthSession } from '@/types';
 
@@ -37,8 +38,8 @@ export function LoginForm() {
 
       saveAuthSession(session);
       router.push('/consumer');
-    } catch (_error) {
-      setErrorMessage('아이디 또는 비밀번호가 일치하지 않습니다.');
+    } catch (error) {
+      setErrorMessage(error instanceof ApiError ? error.message : '아이디 또는 비밀번호가 일치하지 않습니다.');
     } finally {
       setIsSubmitting(false);
     }

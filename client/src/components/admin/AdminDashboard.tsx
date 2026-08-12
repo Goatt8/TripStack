@@ -20,25 +20,25 @@ function formatCompactCount(count: number) {
 
 function formatOrderStatus(status: Order['status']) {
   if (status === 'completed') {
-    return '완료';
+    return '배송완료';
   }
 
   if (status === 'shipping') {
-    return '발송대기';
+    return '배송중';
   }
 
   if (status === 'producing') {
-    return '제작중';
+    return '인쇄중';
   }
 
-  return '주문접수';
+  return '결제 대기중';
 }
 
 const orderStatusOptions: Array<{ label: string; value: Order['status'] }> = [
-  { label: '주문접수', value: 'pending' },
-  { label: '제작중', value: 'producing' },
-  { label: '발송대기', value: 'shipping' },
-  { label: '완료', value: 'completed' },
+  { label: '결제 대기중', value: 'pending' },
+  { label: '인쇄중', value: 'producing' },
+  { label: '배송중', value: 'shipping' },
+  { label: '배송완료', value: 'completed' },
 ];
 
 type AdminTab = 'users' | 'guidebooks' | 'orders';

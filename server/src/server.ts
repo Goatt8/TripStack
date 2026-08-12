@@ -723,7 +723,12 @@ app.post('/api/auth/login', (request, response) => {
     WHERE login_id = ?
   `).get(normalizedLoginId) as (UserRow & { passwordHash: string }) | undefined;
 
-  if (!user || !verifyPassword(password, user.passwordHash)) {
+  if (!user) {
+    response.status(404).json({ message: '존재하지 않는 계정입니다.' });
+    return;
+  }
+
+  if (!verifyPassword(password, user.passwordHash)) {
     response.status(401).json({ message: '아이디 또는 비밀번호가 일치하지 않습니다.' });
     return;
   }
@@ -1393,6 +1398,22 @@ app.delete('/api/guidebooks/:id', (request, response) => {
 
 app.get('/api/orders', (_request, response) => {
   response.json(getOrderRows());
+});
+
+app.get('/api/orders/me', (request, response) => {
+  const currentUser = getRequestUser(request);
+
+  if (!currentUser) {
+    response.status(401).json({ message: '로그인이 필요합니다.' });
+    return;
+  }
+
+  response.json(getOrderRows().filter((order) => (
+    typeof order === 'object'
+      && order !== null
+      && 'consumerId' in order
+      && Number(order.consumerId) === currentUser.id
+  )));
 });
 
 app.post('/api/orders', (request, response) => {

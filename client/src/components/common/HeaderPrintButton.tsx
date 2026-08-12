@@ -96,6 +96,10 @@ export function HeaderPrintButton() {
             <DownloadIcon />
             <span>인쇄하기</span>
           </Link>
+          <Link href="/print-cart?view=history" role="menuitem" onClick={() => setIsMenuOpen(false)}>
+            <PaperListIcon />
+            <span>주문내역</span>
+          </Link>
           <Link href="/print-cart?view=sales" role="menuitem" onClick={() => setIsMenuOpen(false)}>
             <PaperListIcon />
             <span>판매목록</span>

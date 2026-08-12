@@ -14,18 +14,26 @@ function formatCurrency(value: number) {
 
 function formatOrderStatus(status: Order['status']) {
   if (status === 'completed') {
-    return '완료';
+    return '배송완료';
   }
 
   if (status === 'shipping') {
-    return '발송대기';
+    return '배송중';
   }
 
   if (status === 'producing') {
-    return '제작중';
+    return '인쇄중';
   }
 
-  return '주문접수';
+  return '결제 대기중';
+}
+
+function getActiveView(value: string | null) {
+  if (value === 'history' || value === 'sales') {
+    return value;
+  }
+
+  return 'order';
 }
 
 export function GuidebookPrintCart() {
@@ -37,6 +45,7 @@ export function GuidebookPrintCart() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [orderError, setOrderError] = useState('');
   const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
+  const [myOrders, setMyOrders] = useState<Order[]>([]);
   const currentUser = useAccountStore((state) => state.currentUser);
   const loadCurrentUser = useAccountStore((state) => state.loadCurrentUser);
   const currentUserId = currentUser?.id;
@@ -47,7 +56,7 @@ export function GuidebookPrintCart() {
   const clearCart = usePrintCartStore((state) => state.clearCart);
   const removeCartGuidebook = usePrintCartStore((state) => state.removeGuidebook);
   const updateCartQuantity = usePrintCartStore((state) => state.updateQuantity);
-  const activeView = searchParams.get('view') === 'sales' ? 'sales' : 'order';
+  const activeView = getActiveView(searchParams.get('view'));
 
   useEffect(() => {
     loadCurrentUser();
@@ -61,7 +70,8 @@ export function GuidebookPrintCart() {
 
   useEffect(() => {
     void loadOrders();
-  }, []);
+    void loadMyOrders();
+  }, [currentUserId]);
 
   useEffect(() => {
     const guidebookIds = cartItems.map((item) => item.guidebookId);
@@ -82,6 +92,7 @@ export function GuidebookPrintCart() {
   const totalPrice = selectedItems.reduce((sum, item) => sum + item.quantity * item.price, 0);
   const salesOrders = orders.filter((order) => order.creatorId === currentUserId);
   const salesTotalPrice = salesOrders.reduce((sum, order) => sum + order.totalPrice, 0);
+  const myOrderTotalPrice = myOrders.reduce((sum, order) => sum + order.totalPrice, 0);
 
   const selectedIdSet = useMemo(() => new Set(selectedIds), [selectedIds]);
 
@@ -92,6 +103,21 @@ export function GuidebookPrintCart() {
       setOrders(await guidebookService.getOrders());
     } catch {
       setOrderError('주문 목록을 불러오지 못했습니다.');
+    }
+  }
+
+  async function loadMyOrders() {
+    if (!currentUserId) {
+      setMyOrders([]);
+      return;
+    }
+
+    setOrderError('');
+
+    try {
+      setMyOrders(await guidebookService.getMyOrders());
+    } catch {
+      setOrderError('내 주문내역을 불러오지 못했습니다.');
     }
   }
 
@@ -150,9 +176,12 @@ export function GuidebookPrintCart() {
         })
       )));
 
+      await Promise.all(selectedItems.map((item) => removeCartGuidebook(item.guidebookId)));
+      setSelectedIds([]);
       setOrders((previous) => [...createdOrders, ...previous]);
+      setMyOrders((previous) => [...createdOrders, ...previous]);
       setIsSubmitted(true);
-      router.push('/print-cart?view=sales');
+      router.push('/print-cart?view=history');
     } catch {
       setOrderError('인쇄 주문을 생성하지 못했습니다.');
     } finally {
@@ -174,6 +203,27 @@ export function GuidebookPrintCart() {
         <span>Print cart</span>
         <h2>주문목록</h2>
         <p>인쇄 주문을 만들고, 내 가이드북에 들어온 판매 주문을 확인합니다.</p>
+      </div>
+
+      <div className="print-cart-tabs" role="tablist" aria-label="인쇄 주문 메뉴">
+        <button
+          className={activeView === 'order' ? 'active' : ''}
+          type="button"
+          onClick={() => router.push('/print-cart?view=order')}>
+          인쇄하기
+        </button>
+        <button
+          className={activeView === 'history' ? 'active' : ''}
+          type="button"
+          onClick={() => router.push('/print-cart?view=history')}>
+          주문내역
+        </button>
+        <button
+          className={activeView === 'sales' ? 'active' : ''}
+          type="button"
+          onClick={() => router.push('/print-cart?view=sales')}>
+          판매목록
+        </button>
       </div>
 
       {orderError && <p className="error-message">{orderError}</p>}
@@ -214,6 +264,7 @@ export function GuidebookPrintCart() {
                         <strong>{item.title}</strong>
                         <p>{item.creatorName} · {item.region}, {item.country}</p>
                         <span>단가 {formatCurrency(item.price)}</span>
+                        <em>주문목록 대기중</em>
                       </div>
                       <div className="print-cart-quantity" aria-label={`${item.title} 출력 부수`}>
                         <button type="button" onClick={() => void updateQuantity(item.guidebookId, -1)}>-</button>
@@ -257,6 +308,56 @@ export function GuidebookPrintCart() {
             </aside>
           </div>
         )
+      )}
+
+      {activeView === 'history' && (
+        <div className="sales-order-panel">
+          <div className="sales-order-summary">
+            <div>
+              <span>Order history</span>
+              <strong>내 주문내역</strong>
+            </div>
+            <p>{myOrders.length}건 · {formatCurrency(myOrderTotalPrice)}</p>
+          </div>
+
+          {myOrders.length === 0 ? (
+            <div className="print-cart-empty">
+              <strong>아직 주문한 가이드북이 없습니다.</strong>
+              <p>인쇄하기 탭에서 가이드북을 주문하면 이곳에서 주문상태를 확인할 수 있습니다.</p>
+            </div>
+          ) : (
+            <div className="sales-order-table-wrap">
+              <table className="sales-order-table order-history-table">
+                <thead>
+                  <tr>
+                    <th>주문 가이드북</th>
+                    <th>크리에이터</th>
+                    <th>지역</th>
+                    <th>수량</th>
+                    <th>금액</th>
+                    <th>주문상태</th>
+                    <th>주문일</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {myOrders.map((order) => (
+                    <tr key={order.id}>
+                      <td>{order.guidebookTitle}</td>
+                      <td>{order.creatorName}</td>
+                      <td>{order.region}, {order.country}</td>
+                      <td>{order.quantity}부</td>
+                      <td>{formatCurrency(order.totalPrice)}</td>
+                      <td>
+                        <span className={`sales-order-status ${order.status}`}>{formatOrderStatus(order.status)}</span>
+                      </td>
+                      <td>{new Date(order.createdAt).toLocaleDateString('ko-KR')}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
       )}
 
       {activeView === 'sales' && (

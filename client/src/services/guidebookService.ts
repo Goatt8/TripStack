@@ -54,6 +54,9 @@ export const guidebookService = {
   getOrders() {
     return request<Order[]>('/orders');
   },
+  getMyOrders() {
+    return request<Order[]>('/orders/me');
+  },
   createOrder(payload: {
     consumerId: number;
     guidebookId: number;

@@ -39,6 +39,33 @@
   line-height: 1.5;
 }
 
+.print-cart-tabs {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid #e4e7ec;
+  border-radius: 999px;
+  background: #ffffff;
+  padding: 4px;
+  margin-bottom: 22px;
+}
+
+.print-cart-tabs button {
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #667085;
+  cursor: pointer;
+  padding: 10px 16px;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.print-cart-tabs button.active {
+  background: #101828;
+  color: #ffffff;
+}
+
 .print-cart-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 300px;
@@ -131,7 +158,8 @@
 }
 
 .print-cart-info p,
-.print-cart-info span {
+.print-cart-info span,
+.print-cart-info em {
   margin: 0;
   overflow: hidden;
   color: #667085;
@@ -139,6 +167,17 @@
   font-weight: 800;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.print-cart-info em {
+  justify-self: start;
+  border-radius: 999px;
+  background: #f2f4f7;
+  color: #475467;
+  padding: 4px 8px;
+  font-style: normal;
+  font-size: 10px;
+  font-weight: 900;
 }
 
 .print-cart-quantity {
@@ -371,6 +410,11 @@
   font-weight: 900;
 }
 
+.sales-order-status.pending {
+  background: #f2f4f7;
+  color: #475467;
+}
+
 .sales-order-status.producing {
   background: #fff7ed;
   color: #ea580c;
@@ -386,6 +430,10 @@
   color: #079455;
 }
 
+.order-history-table {
+  min-width: 760px;
+}
+
 @media (max-width: 900px) {
   .print-cart-view {
     width: min(100% - 32px, 720px);
@@ -397,6 +445,17 @@
 
   .print-cart-heading h2 {
     font-size: 23px;
+  }
+
+  .print-cart-tabs {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    width: 100%;
+    border-radius: 8px;
+  }
+
+  .print-cart-tabs button {
+    padding-inline: 8px;
   }
 
   .print-cart-layout {
