@@ -2,7 +2,6 @@ import { request } from '@/services/apiClient';
 import type { Guidebook, GuidebookBlock, GuidebookRoutePoint, Order, User } from '@/types';
 
 export type CreateGuidebookPayload = {
-  creatorId: number;
   title: string;
   country: string;
   region: string;
@@ -58,12 +57,10 @@ export const guidebookService = {
     return request<Order[]>('/orders/me');
   },
   createOrder(payload: {
-    consumerId: number;
     guidebookId: number;
     quantity: number;
     selectedLayoutType: string;
     shippingMemo: string;
-    totalPrice: number;
   }) {
     return request<Order>('/orders', {
       method: 'POST',

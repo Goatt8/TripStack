@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 
 import { guidebookKeywordMap, layouts } from '@/features/guidebook/constants';
 import { guidebookService } from '@/services/guidebookService';
-import type { Guidebook, GuidebookBlock, Order, OrderStatus, User } from '@/types';
+import type { Guidebook, GuidebookBlock, User } from '@/types';
 
 function uniqueBy<T>(items: T[], getKey: (item: T) => string) {
   const seenKeys = new Set<string>();
@@ -24,7 +24,6 @@ function uniqueBy<T>(items: T[], getKey: (item: T) => string) {
 export function useGuidebookCatalog() {
   const [creators, setCreators] = useState<User[]>([]);
   const [guidebooks, setGuidebooks] = useState<Guidebook[]>([]);
-  const [orders, setOrders] = useState<Order[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedKeyword, setSelectedKeyword] = useState('all');
   const [selectedGuidebook, setSelectedGuidebook] = useState<Guidebook | null>(null);
@@ -38,12 +37,8 @@ export function useGuidebookCatalog() {
       try {
         setLoading(true);
         setError('');
-        const [creatorData, orderData] = await Promise.all([
-          guidebookService.getCreators(),
-          guidebookService.getOrders(),
-        ]);
+        const creatorData = await guidebookService.getCreators();
         setCreators(uniqueBy(creatorData, (creator) => `${creator.username}-${creator.avatarUrl}`));
-        setOrders(orderData);
       } catch {
         setError('초기 데이터를 불러오지 못했습니다. API 서버 상태를 확인해 주세요.');
       } finally {
@@ -139,18 +134,12 @@ export function useGuidebookCatalog() {
     setSelectedKeyword(keyword);
   }
 
-  async function updateOrderStatus(order: Order, status: OrderStatus) {
-    const updated = await guidebookService.updateOrderStatus(order.id, status);
-    setOrders((previous) => previous.map((item) => (item.id === updated.id ? updated : item)));
-  }
-
   return {
     blocks,
     creators,
     error,
     guidebooks: filteredGuidebooks,
     loading,
-    orders,
     searchQuery,
     selectedGuidebook,
     selectedLayout,
@@ -162,6 +151,5 @@ export function useGuidebookCatalog() {
     setSelectedLayout,
     topGuidebook,
     totalPrintCount,
-    updateOrderStatus,
   };
 }

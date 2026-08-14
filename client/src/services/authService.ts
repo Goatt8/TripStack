@@ -39,14 +39,14 @@ export const authService = {
       body: JSON.stringify(payload),
     });
   },
-  updateProfile(userId: number, payload: UpdateProfilePayload) {
-    return request<User>(`/users/${userId}/profile`, {
+  updateProfile(payload: UpdateProfilePayload) {
+    return request<User>('/users/me/profile', {
       method: 'PATCH',
       body: JSON.stringify(payload),
     });
   },
-  updateAccount(userId: number, payload: UpdateAccountPayload) {
-    return request<User>(`/users/${userId}/account`, {
+  updateAccount(payload: UpdateAccountPayload) {
+    return request<User>('/users/me/account', {
       method: 'PATCH',
       body: JSON.stringify(payload),
     });

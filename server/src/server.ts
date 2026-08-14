@@ -255,6 +255,17 @@ function requireAdminUser(request: Request, response: Response) {
   return currentUser;
 }
 
+function requireAuthUser(request: Request, response: Response) {
+  const currentUser = getRequestUser(request);
+
+  if (!currentUser) {
+    response.status(401).json({ message: '로그인이 필요합니다.' });
+    return null;
+  }
+
+  return currentUser;
+}
+
 function hasColumn(tableName: string, columnName: string) {
   const columns = db.prepare(`PRAGMA table_info(${tableName})`).all() as { name: string }[];
 
@@ -740,8 +751,8 @@ app.post('/api/auth/login', (request, response) => {
   });
 });
 
-app.patch('/api/users/:id/profile', (request, response) => {
-  const userId = Number(request.params.id);
+app.patch('/api/users/me/profile', (request, response) => {
+  const currentUser = requireAuthUser(request, response);
   const { displayName, profileImageUrl } = request.body as {
     displayName?: string;
     profileImageUrl?: string;
@@ -749,8 +760,12 @@ app.patch('/api/users/:id/profile', (request, response) => {
 
   const normalizedDisplayName = displayName?.trim();
 
-  if (!Number.isInteger(userId) || !normalizedDisplayName) {
-    response.status(400).json({ message: 'userId and displayName are required.' });
+  if (!currentUser) {
+    return;
+  }
+
+  if (!normalizedDisplayName) {
+    response.status(400).json({ message: 'displayName is required.' });
     return;
   }
 
@@ -765,7 +780,7 @@ app.patch('/api/users/:id/profile', (request, response) => {
   `).run({
     displayName: normalizedDisplayName,
     profileImageUrl: profileImageUrl?.trim() || '',
-    userId,
+    userId: currentUser.id,
   });
 
   if (result.changes === 0) {
@@ -790,13 +805,13 @@ app.patch('/api/users/:id/profile', (request, response) => {
       updated_at AS updatedAt
     FROM users
     WHERE id = ?
-  `).get(userId) as UserRow;
+  `).get(currentUser.id) as UserRow;
 
   response.json(serializeUser(user));
 });
 
-app.patch('/api/users/:id/account', (request, response) => {
-  const userId = Number(request.params.id);
+app.patch('/api/users/me/account', (request, response) => {
+  const authUser = requireAuthUser(request, response);
   const { currentPassword, email, newPassword } = request.body as {
     currentPassword?: string;
     email?: string;
@@ -806,8 +821,12 @@ app.patch('/api/users/:id/account', (request, response) => {
   const normalizedEmail = email?.trim().toLowerCase();
   const normalizedNewPassword = newPassword?.trim();
 
-  if (!Number.isInteger(userId) || !normalizedEmail) {
-    response.status(400).json({ message: 'userId and email are required.' });
+  if (!authUser) {
+    return;
+  }
+
+  if (!normalizedEmail) {
+    response.status(400).json({ message: 'email is required.' });
     return;
   }
 
@@ -815,7 +834,7 @@ app.patch('/api/users/:id/account', (request, response) => {
     SELECT password_hash AS passwordHash
     FROM users
     WHERE id = ?
-  `).get(userId) as { passwordHash: string } | undefined;
+  `).get(authUser.id) as { passwordHash: string } | undefined;
 
   if (!currentUser) {
     response.status(404).json({ message: 'User not found.' });
@@ -834,7 +853,7 @@ app.patch('/api/users/:id/account', (request, response) => {
     FROM users
     WHERE lower(email) = @email
       AND id != @userId
-  `).get({ email: normalizedEmail, userId });
+  `).get({ email: normalizedEmail, userId: authUser.id });
 
   if (existingEmailOwner) {
     response.status(409).json({ message: '이미 사용 중인 이메일입니다.' });
@@ -853,7 +872,7 @@ app.patch('/api/users/:id/account', (request, response) => {
   `).run({
     email: normalizedEmail,
     passwordHash: normalizedNewPassword ? createPasswordHash(normalizedNewPassword) : null,
-    userId,
+    userId: authUser.id,
   });
 
   const user = db.prepare(`
@@ -873,7 +892,7 @@ app.patch('/api/users/:id/account', (request, response) => {
       updated_at AS updatedAt
     FROM users
     WHERE id = ?
-  `).get(userId) as UserRow;
+  `).get(authUser.id) as UserRow;
 
   response.json(serializeUser(user));
 });
@@ -1035,37 +1054,39 @@ app.get('/api/guidebooks/:id/blocks', (request, response) => {
 });
 
 app.get('/api/print-cart', (request, response) => {
-  const userId = Number(request.query.userId);
+  const currentUser = requireAuthUser(request, response);
 
-  if (!Number.isInteger(userId)) {
-    response.status(400).json({ message: 'userId is required.' });
+  if (!currentUser) {
     return;
   }
 
-  response.json(getPrintCartItems(userId));
+  response.json(getPrintCartItems(currentUser.id));
 });
 
 app.delete('/api/print-cart', (request, response) => {
-  const userId = Number(request.query.userId);
+  const currentUser = requireAuthUser(request, response);
 
-  if (!Number.isInteger(userId)) {
-    response.status(400).json({ message: 'userId is required.' });
+  if (!currentUser) {
     return;
   }
 
-  db.prepare('DELETE FROM print_cart_items WHERE user_id = ?').run(userId);
+  db.prepare('DELETE FROM print_cart_items WHERE user_id = ?').run(currentUser.id);
   response.status(204).send();
 });
 
 app.post('/api/print-cart', (request, response) => {
-  const { guidebookId, quantity, userId } = request.body as {
+  const currentUser = requireAuthUser(request, response);
+  const { guidebookId, quantity } = request.body as {
     guidebookId?: number;
     quantity?: number;
-    userId?: number;
   };
 
-  if (!userId || !guidebookId) {
-    response.status(400).json({ message: 'userId and guidebookId are required.' });
+  if (!currentUser) {
+    return;
+  }
+
+  if (!guidebookId) {
+    response.status(400).json({ message: 'guidebookId is required.' });
     return;
   }
 
@@ -1082,20 +1103,25 @@ app.post('/api/print-cart', (request, response) => {
     ON CONFLICT(user_id, guidebook_id) DO UPDATE SET
       updated_at = CURRENT_TIMESTAMP
   `).run({
-    userId,
+    userId: currentUser.id,
     guidebookId,
     quantity: Math.max(1, quantity ?? 1),
   });
 
-  response.status(201).json(getPrintCartItems(userId).find((item) => item.guidebookId === guidebookId));
+  response.status(201).json(getPrintCartItems(currentUser.id).find((item) => item.guidebookId === guidebookId));
 });
 
 app.patch('/api/print-cart/:guidebookId', (request, response) => {
+  const currentUser = requireAuthUser(request, response);
   const guidebookId = Number(request.params.guidebookId);
-  const { quantity, userId } = request.body as { quantity?: number; userId?: number };
+  const { quantity } = request.body as { quantity?: number };
 
-  if (!userId || !Number.isInteger(guidebookId) || !quantity || quantity < 1) {
-    response.status(400).json({ message: 'userId, guidebookId, and positive quantity are required.' });
+  if (!currentUser) {
+    return;
+  }
+
+  if (!Number.isInteger(guidebookId) || !quantity || quantity < 1) {
+    response.status(400).json({ message: 'guidebookId and positive quantity are required.' });
     return;
   }
 
@@ -1105,9 +1131,9 @@ app.patch('/api/print-cart/:guidebookId', (request, response) => {
         updated_at = CURRENT_TIMESTAMP
     WHERE user_id = @userId
       AND guidebook_id = @guidebookId
-  `).run({ userId, guidebookId, quantity });
+  `).run({ userId: currentUser.id, guidebookId, quantity });
 
-  const updated = getPrintCartItems(userId).find((item) => item.guidebookId === guidebookId);
+  const updated = getPrintCartItems(currentUser.id).find((item) => item.guidebookId === guidebookId);
 
   if (!updated) {
     response.status(404).json({ message: 'Print cart item not found.' });
@@ -1118,11 +1144,15 @@ app.patch('/api/print-cart/:guidebookId', (request, response) => {
 });
 
 app.delete('/api/print-cart/:guidebookId', (request, response) => {
+  const currentUser = requireAuthUser(request, response);
   const guidebookId = Number(request.params.guidebookId);
-  const userId = Number(request.query.userId);
 
-  if (!Number.isInteger(userId) || !Number.isInteger(guidebookId)) {
-    response.status(400).json({ message: 'userId and guidebookId are required.' });
+  if (!currentUser) {
+    return;
+  }
+
+  if (!Number.isInteger(guidebookId)) {
+    response.status(400).json({ message: 'guidebookId is required.' });
     return;
   }
 
@@ -1130,18 +1160,18 @@ app.delete('/api/print-cart/:guidebookId', (request, response) => {
     DELETE FROM print_cart_items
     WHERE user_id = ?
       AND guidebook_id = ?
-  `).run(userId, guidebookId);
+  `).run(currentUser.id, guidebookId);
 
   response.status(204).send();
 });
 
 app.post('/api/guidebooks', (request, response) => {
+  const currentUser = requireAuthUser(request, response);
   const {
     block,
     blocks,
     country,
     coverImageUrl,
-    creatorId,
     mapImageUrl,
     mapCenterLat,
     mapCenterLon,
@@ -1150,17 +1180,14 @@ app.post('/api/guidebooks', (request, response) => {
     title,
   } = request.body as CreateGuidebookBody;
 
-  if (!creatorId || !title || !country || !region || !coverImageUrl || !mapImageUrl) {
-    response.status(400).json({
-      message: 'creatorId, title, country, region, coverImageUrl, mapImageUrl are required.',
-    });
+  if (!currentUser) {
     return;
   }
 
-  const creator = db.prepare('SELECT id FROM users WHERE id = ?').get(creatorId);
-
-  if (!creator) {
-    response.status(404).json({ message: 'Creator not found.' });
+  if (!title || !country || !region || !coverImageUrl || !mapImageUrl) {
+    response.status(400).json({
+      message: 'title, country, region, coverImageUrl, mapImageUrl are required.',
+    });
     return;
   }
 
@@ -1169,7 +1196,7 @@ app.post('/api/guidebooks', (request, response) => {
       INSERT INTO guidebooks (creator_id, title, country, region, cover_image_url, map_image_url, map_center_lat, map_center_lon, print_count, price)
       VALUES (@creatorId, @title, @country, @region, @coverImageUrl, @mapImageUrl, @mapCenterLat, @mapCenterLon, 0, 12800)
     `).run({
-      creatorId,
+      creatorId: currentUser.id,
       title,
       country,
       region,
@@ -1244,12 +1271,12 @@ app.post('/api/guidebooks', (request, response) => {
 });
 
 app.patch('/api/guidebooks/:id', (request, response) => {
+  const currentUser = requireAuthUser(request, response);
   const guidebookId = Number(request.params.id);
   const {
     blocks,
     country,
     coverImageUrl,
-    creatorId,
     mapImageUrl,
     mapCenterLat,
     mapCenterLon,
@@ -1258,14 +1285,18 @@ app.patch('/api/guidebooks/:id', (request, response) => {
     title,
   } = request.body as CreateGuidebookBody;
 
+  if (!currentUser) {
+    return;
+  }
+
   if (!Number.isInteger(guidebookId)) {
     response.status(400).json({ message: 'Valid guidebook id is required.' });
     return;
   }
 
-  if (!creatorId || !title || !country || !region || !coverImageUrl || !mapImageUrl) {
+  if (!title || !country || !region || !coverImageUrl || !mapImageUrl) {
     response.status(400).json({
-      message: 'creatorId, title, country, region, coverImageUrl, mapImageUrl are required.',
+      message: 'title, country, region, coverImageUrl, mapImageUrl are required.',
     });
     return;
   }
@@ -1280,7 +1311,7 @@ app.patch('/api/guidebooks/:id', (request, response) => {
     return;
   }
 
-  if (guidebook.creatorId !== creatorId) {
+  if (guidebook.creatorId !== currentUser.id) {
     response.status(403).json({ message: 'Only the guidebook creator can update this guidebook.' });
     return;
   }
@@ -1371,17 +1402,30 @@ app.patch('/api/guidebooks/:id', (request, response) => {
 });
 
 app.delete('/api/guidebooks/:id', (request, response) => {
+  const currentUser = requireAuthUser(request, response);
   const guidebookId = Number(request.params.id);
+
+  if (!currentUser) {
+    return;
+  }
 
   if (!Number.isInteger(guidebookId)) {
     response.status(400).json({ message: 'Valid guidebook id is required.' });
     return;
   }
 
-  const guidebook = db.prepare('SELECT id FROM guidebooks WHERE id = ?').get(guidebookId);
+  const guidebook = db.prepare('SELECT id, creator_id AS creatorId FROM guidebooks WHERE id = ?').get(guidebookId) as {
+    creatorId: number;
+    id: number;
+  } | undefined;
 
   if (!guidebook) {
     response.status(404).json({ message: 'Guidebook not found.' });
+    return;
+  }
+
+  if (guidebook.creatorId !== currentUser.id) {
+    response.status(403).json({ message: 'Only the guidebook creator can delete this guidebook.' });
     return;
   }
 
@@ -1396,15 +1440,27 @@ app.delete('/api/guidebooks/:id', (request, response) => {
   response.status(204).send();
 });
 
-app.get('/api/orders', (_request, response) => {
-  response.json(getOrderRows());
+app.get('/api/orders', (request, response) => {
+  const currentUser = requireAuthUser(request, response);
+
+  if (!currentUser) {
+    return;
+  }
+
+  const orders = getOrderRows().filter((order) => (
+    typeof order === 'object'
+      && order !== null
+      && 'creatorId' in order
+      && Number(order.creatorId) === currentUser.id
+  ));
+
+  response.json(orders);
 });
 
 app.get('/api/orders/me', (request, response) => {
-  const currentUser = getRequestUser(request);
+  const currentUser = requireAuthUser(request, response);
 
   if (!currentUser) {
-    response.status(401).json({ message: '로그인이 필요합니다.' });
     return;
   }
 
@@ -1417,17 +1473,20 @@ app.get('/api/orders/me', (request, response) => {
 });
 
 app.post('/api/orders', (request, response) => {
-  const { consumerId, guidebookId, quantity, selectedLayoutType, shippingMemo, totalPrice } = request.body as {
-    consumerId?: number;
+  const currentUser = requireAuthUser(request, response);
+  const { guidebookId, quantity, selectedLayoutType, shippingMemo } = request.body as {
     guidebookId?: number;
     quantity?: number;
     selectedLayoutType?: string;
     shippingMemo?: string;
-    totalPrice?: number;
   };
 
-  if (!consumerId || !guidebookId || !selectedLayoutType) {
-    response.status(400).json({ message: 'consumerId, guidebookId, selectedLayoutType are required.' });
+  if (!currentUser) {
+    return;
+  }
+
+  if (!guidebookId || !selectedLayoutType) {
+    response.status(400).json({ message: 'guidebookId and selectedLayoutType are required.' });
     return;
   }
 
@@ -1443,17 +1502,17 @@ app.post('/api/orders', (request, response) => {
     const customPrint = db.prepare(`
       INSERT INTO custom_prints (consumer_id, guidebook_id, selected_layout_type)
       VALUES (?, ?, ?)
-    `).run(consumerId, guidebookId, selectedLayoutType);
+    `).run(currentUser.id, guidebookId, selectedLayoutType);
 
     const order = db.prepare(`
       INSERT INTO orders (consumer_id, guidebook_id, custom_print_id, quantity, total_price, status, shipping_memo)
       VALUES (?, ?, ?, ?, ?, 'pending', ?)
     `).run(
-      consumerId,
+      currentUser.id,
       guidebookId,
       customPrint.lastInsertRowid,
       normalizedQuantity,
-      totalPrice ?? guidebook.price * normalizedQuantity,
+      guidebook.price * normalizedQuantity,
       shippingMemo ?? '',
     );
 

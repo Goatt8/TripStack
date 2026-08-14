@@ -41,7 +41,7 @@ export const usePrintCartStore = create<PrintCartStore>((set, get) => ({
 
     try {
       set({ error: '', loading: true });
-      const items = await cartService.getItems(userId);
+      const items = await cartService.getItems();
       set({ guidebookIds: getGuidebookIds(items), items });
     } catch {
       set({ error: '담아둔 가이드북 정보를 불러오지 못했습니다.', guidebookIds: [], items: [] });
@@ -59,7 +59,7 @@ export const usePrintCartStore = create<PrintCartStore>((set, get) => ({
     }
 
     set({ error: '' });
-    await cartService.addItem(userId, guidebookId);
+    await cartService.addItem(guidebookId);
     await get().loadCart();
   },
 
@@ -72,7 +72,7 @@ export const usePrintCartStore = create<PrintCartStore>((set, get) => ({
     }
 
     set({ error: '' });
-    await cartService.clearItems(userId);
+    await cartService.clearItems();
     set({ guidebookIds: [], items: [] });
   },
 
@@ -85,7 +85,7 @@ export const usePrintCartStore = create<PrintCartStore>((set, get) => ({
     }
 
     set({ error: '' });
-    await cartService.removeItem(userId, guidebookId);
+    await cartService.removeItem(guidebookId);
     const items = get().items.filter((item) => item.guidebookId !== guidebookId);
     set({ guidebookIds: getGuidebookIds(items), items });
   },
@@ -111,7 +111,7 @@ export const usePrintCartStore = create<PrintCartStore>((set, get) => ({
     set({ error: '', items: optimisticItems });
 
     try {
-      const updated = await cartService.updateQuantity(userId, guidebookId, nextQuantity);
+      const updated = await cartService.updateQuantity(guidebookId, nextQuantity);
       const items = get().items.map((item) => (
         item.guidebookId === guidebookId ? updated : item
       ));

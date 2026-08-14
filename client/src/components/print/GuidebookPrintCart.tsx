@@ -167,12 +167,10 @@ export function GuidebookPrintCart() {
 
       const createdOrders = await Promise.all(selectedItems.map((item) => (
         guidebookService.createOrder({
-          consumerId: currentUserId,
           guidebookId: item.guidebookId,
           quantity: item.quantity,
           selectedLayoutType: '기본 인쇄형',
           shippingMemo: 'TripStack 데모 인쇄 주문',
-          totalPrice: item.quantity * item.price,
         })
       )));
 

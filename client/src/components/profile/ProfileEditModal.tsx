@@ -24,7 +24,6 @@ export function ProfileEditModal({ onClose }: ProfileEditModalProps) {
     return null;
   }
 
-  const userId = user.id;
   const profileInitial = (displayName || user.username || 'T').slice(0, 1).toUpperCase();
 
   function handleProfileImageChange(event: ChangeEvent<HTMLInputElement>) {
@@ -53,7 +52,7 @@ export function ProfileEditModal({ onClose }: ProfileEditModalProps) {
     try {
       setErrorMessage('');
       setIsSubmitting(true);
-      const updatedUser = await authService.updateProfile(userId, {
+      const updatedUser = await authService.updateProfile({
         displayName,
         profileImageUrl,
       });

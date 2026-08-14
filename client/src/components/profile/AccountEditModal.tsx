@@ -25,8 +25,6 @@ export function AccountEditModal({ onClose }: AccountEditModalProps) {
     return null;
   }
 
-  const userId = user.id;
-
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
@@ -50,7 +48,7 @@ export function AccountEditModal({ onClose }: AccountEditModalProps) {
     try {
       setErrorMessage('');
       setIsSubmitting(true);
-      const updatedUser = await authService.updateAccount(userId, {
+      const updatedUser = await authService.updateAccount({
         currentPassword: currentPassword || undefined,
         email,
         newPassword: newPassword || undefined,

@@ -239,7 +239,6 @@ export function CreatorStudioFeed({ creators, guidebooks, viewedCreatorId }: Cre
 
     if (editingGuidebook) {
       const updated = await guidebookService.updateGuidebook(editingGuidebook.id, {
-        creatorId: creator.id,
         title: draft.title,
         country: draft.country,
         region: draft.region,
@@ -274,7 +273,6 @@ export function CreatorStudioFeed({ creators, guidebooks, viewedCreatorId }: Cre
     }
 
     const created = await guidebookService.createGuidebook({
-      creatorId: creator.id,
       title: draft.title,
       country: draft.country,
       region: draft.region,
