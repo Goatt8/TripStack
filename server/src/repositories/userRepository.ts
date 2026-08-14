@@ -1,4 +1,5 @@
-import { db } from '../db.js';
+import type { ResultSetHeader, RowDataPacket } from 'mysql2';
+import { mysqlPool } from '../database/mysql.js';
 
 export type UserRow = {
   id: number;
@@ -53,12 +54,6 @@ const userSelectColumns = `
   updated_at AS updatedAt
 `;
 
-function hasColumn(tableName: string, columnName: string) {
-  const columns = db.prepare(`PRAGMA table_info(${tableName})`).all() as { name: string }[];
-
-  return columns.some((column) => column.name === columnName);
-}
-
 export function serializeUser(row: UserRow) {
   return {
     ...row,
@@ -68,194 +63,165 @@ export function serializeUser(row: UserRow) {
   };
 }
 
-export function findUserById(userId: number) {
-  return db.prepare(`
+export async function findUserById(userId: number) {
+  const [rows] = await mysqlPool.execute<RowDataPacket[]>(`
     SELECT ${userSelectColumns}
     FROM users
     WHERE id = ?
-  `).get(userId) as UserRow | undefined;
+  `, [userId]);
+
+  return rows[0] as UserRow | undefined;
 }
 
-export function getUserRows() {
-  const rows = db.prepare(`
+export async function getUserRows() {
+  const [rows] = await mysqlPool.execute<RowDataPacket[]>(`
     SELECT ${userSelectColumns}
     FROM users
     ORDER BY follower_count DESC
-  `).all() as UserRow[];
+  `);
 
-  return rows.map(serializeUser);
+  return (rows as UserRow[]).map(serializeUser);
 }
 
-export function findExistingUserByLoginIdOrEmail(loginId: string, email: string) {
-  return db.prepare(`
+export async function findExistingUserByLoginIdOrEmail(loginId: string, email: string) {
+  const [rows] = await mysqlPool.execute<RowDataPacket[]>(`
     SELECT id
     FROM users
-    WHERE login_id = @loginId
-       OR lower(email) = @email
-  `).get({ email, loginId }) as { id: number } | undefined;
+    WHERE login_id = ?
+       OR lower(email) = ?
+  `, [loginId, email]);
+
+  return rows[0] as { id: number } | undefined;
 }
 
-export function createUser(input: CreateUserInput) {
-  const insertUser = hasColumn('users', 'role')
-    ? db.prepare(`
-      INSERT INTO users (
-        login_id,
-        username,
-        role,
-        email,
-        password_hash,
-        display_name,
-        bio,
-        profile_image_url,
-        avatar_url,
-        follower_count,
-        is_admin,
-        trust_score
-      )
-      VALUES (
-        @loginId,
-        @displayName,
-        'consumer',
-        @email,
-        @passwordHash,
-        @displayName,
-        '',
-        @profileImageUrl,
-        @profileImageUrl,
-        0,
-        @isAdmin,
-        0
-      )
-    `)
-    : db.prepare(`
-      INSERT INTO users (
-        login_id,
-        username,
-        email,
-        password_hash,
-        display_name,
-        bio,
-        profile_image_url,
-        avatar_url,
-        follower_count,
-        is_admin,
-        trust_score
-      )
-      VALUES (
-        @loginId,
-        @displayName,
-        @email,
-        @passwordHash,
-        @displayName,
-        '',
-        @profileImageUrl,
-        @profileImageUrl,
-        0,
-        @isAdmin,
-        0
-      )
-    `);
+export async function createUser(input: CreateUserInput) {
+  const [result] = await mysqlPool.execute<ResultSetHeader>(`
+    INSERT INTO users (
+      login_id,
+      username,
+      role,
+      email,
+      password_hash,
+      display_name,
+      bio,
+      profile_image_url,
+      avatar_url,
+      follower_count,
+      is_admin,
+      trust_score
+    )
+    VALUES (?, ?, 'consumer', ?, ?, ?, '', ?, ?, 0, ?, 0)
+  `, [
+    input.loginId,
+    input.displayName,
+    input.email,
+    input.passwordHash,
+    input.displayName,
+    input.profileImageUrl,
+    input.profileImageUrl,
+    input.isAdmin,
+  ]);
 
-  return Number(insertUser.run(input).lastInsertRowid);
+  return result.insertId;
 }
 
-export function findUserByLoginIdWithPassword(loginId: string) {
-  return db.prepare(`
+export async function findUserByLoginIdWithPassword(loginId: string) {
+  const [rows] = await mysqlPool.execute<RowDataPacket[]>(`
     SELECT
       ${userSelectColumns},
       password_hash AS passwordHash
     FROM users
     WHERE login_id = ?
-  `).get(loginId) as UserWithPasswordHashRow | undefined;
+  `, [loginId]);
+
+  return rows[0] as UserWithPasswordHashRow | undefined;
 }
 
-export function updateUserProfile(userId: number, displayName: string, profileImageUrl: string) {
-  const result = db.prepare(`
+export async function updateUserProfile(userId: number, displayName: string, profileImageUrl: string) {
+  const [result] = await mysqlPool.execute<ResultSetHeader>(`
     UPDATE users
-    SET username = @displayName,
-        display_name = @displayName,
-        profile_image_url = @profileImageUrl,
-        avatar_url = @profileImageUrl,
-        updated_at = CURRENT_TIMESTAMP
-    WHERE id = @userId
-  `).run({
-    displayName,
-    profileImageUrl,
-    userId,
-  });
+    SET username = ?,
+        display_name = ?,
+        profile_image_url = ?,
+        avatar_url = ?
+    WHERE id = ?
+  `, [displayName, displayName, profileImageUrl, profileImageUrl, userId]);
 
-  return result.changes;
+  return result.affectedRows;
 }
 
-export function findUserPasswordHashById(userId: number) {
-  return db.prepare(`
+export async function findUserPasswordHashById(userId: number) {
+  const [rows] = await mysqlPool.execute<RowDataPacket[]>(`
     SELECT password_hash AS passwordHash
     FROM users
     WHERE id = ?
-  `).get(userId) as { passwordHash: string } | undefined;
+  `, [userId]);
+
+  return rows[0] as { passwordHash: string } | undefined;
 }
 
-export function findUserIdByEmailExcept(email: string, userId: number) {
-  return db.prepare(`
+export async function findUserIdByEmailExcept(email: string, userId: number) {
+  const [rows] = await mysqlPool.execute<RowDataPacket[]>(`
     SELECT id
     FROM users
-    WHERE lower(email) = @email
-      AND id != @userId
-  `).get({ email, userId }) as { id: number } | undefined;
+    WHERE lower(email) = ?
+      AND id != ?
+  `, [email, userId]);
+
+  return rows[0] as { id: number } | undefined;
 }
 
-export function updateUserAccount(userId: number, email: string, passwordHash: string | null) {
-  db.prepare(`
+export async function updateUserAccount(userId: number, email: string, passwordHash: string | null) {
+  await mysqlPool.execute(`
     UPDATE users
-    SET email = @email,
+    SET email = ?,
         password_hash = CASE
-          WHEN @passwordHash IS NULL THEN password_hash
-          ELSE @passwordHash
-        END,
-        updated_at = CURRENT_TIMESTAMP
-    WHERE id = @userId
-  `).run({
-    email,
-    passwordHash,
-    userId,
-  });
+          WHEN ? IS NULL THEN password_hash
+          ELSE ?
+        END
+    WHERE id = ?
+  `, [email, passwordHash, passwordHash, userId]);
 }
 
-export function updateAdminUser(input: UpdateAdminUserInput) {
-  const result = db.prepare(`
+export async function updateAdminUser(input: UpdateAdminUserInput) {
+  const [result] = await mysqlPool.execute<ResultSetHeader>(`
     UPDATE users
-    SET username = @displayName,
-        display_name = @displayName,
-        email = @email,
-        is_admin = @isAdmin,
-        profile_image_url = @profileImageUrl,
-        avatar_url = @profileImageUrl,
-        updated_at = CURRENT_TIMESTAMP
-    WHERE id = @userId
-  `).run({
-    ...input,
-    isAdmin: input.isAdmin ? 1 : 0,
-  });
+    SET username = ?,
+        display_name = ?,
+        email = ?,
+        is_admin = ?,
+        profile_image_url = ?,
+        avatar_url = ?
+    WHERE id = ?
+  `, [
+    input.displayName,
+    input.displayName,
+    input.email,
+    input.isAdmin ? 1 : 0,
+    input.profileImageUrl,
+    input.profileImageUrl,
+    input.userId,
+  ]);
 
-  return result.changes;
+  return result.affectedRows;
 }
 
-export function getUserDependencyCount(userId: number) {
-  const result = db.prepare(`
+export async function getUserDependencyCount(userId: number) {
+  const [rows] = await mysqlPool.execute<RowDataPacket[]>(`
     SELECT
-      (SELECT COUNT(*) FROM guidebooks WHERE creator_id = @userId) +
-      (SELECT COUNT(*) FROM orders WHERE consumer_id = @userId) +
+      (SELECT COUNT(*) FROM guidebooks WHERE creator_id = ?) +
+      (SELECT COUNT(*) FROM orders WHERE consumer_id = ?) +
       (SELECT COUNT(*) FROM guidebooks
         JOIN orders ON orders.guidebook_id = guidebooks.id
-        WHERE guidebooks.creator_id = @userId
+        WHERE guidebooks.creator_id = ?
       ) AS count
-  `).get({ userId }) as { count: number };
+  `, [userId, userId, userId]);
 
-  return result.count;
+  return Number(rows[0]?.count ?? 0);
 }
 
-export function deleteUserById(userId: number) {
-  const result = db.prepare('DELETE FROM users WHERE id = ?').run(userId);
+export async function deleteUserById(userId: number) {
+  const [result] = await mysqlPool.execute<ResultSetHeader>('DELETE FROM users WHERE id = ?', [userId]);
 
-  return result.changes;
+  return result.affectedRows;
 }

@@ -1,4 +1,5 @@
-import { db } from '../db.js';
+import type { ResultSetHeader, RowDataPacket } from 'mysql2';
+import { mysqlPool } from '../database/mysql.js';
 
 export type PrintCartItemRow = {
   id: number;
@@ -17,8 +18,8 @@ export type PrintCartItemRow = {
   price: number;
 };
 
-export function getPrintCartItems(userId: number) {
-  return db.prepare(`
+export async function getPrintCartItems(userId: number) {
+  const [rows] = await mysqlPool.execute<RowDataPacket[]>(`
     SELECT
       print_cart_items.id,
       print_cart_items.user_id AS userId,
@@ -39,44 +40,45 @@ export function getPrintCartItems(userId: number) {
     JOIN users ON users.id = guidebooks.creator_id
     WHERE print_cart_items.user_id = ?
     ORDER BY print_cart_items.created_at DESC
-  `).all(userId) as PrintCartItemRow[];
+  `, [userId]);
+
+  return rows as PrintCartItemRow[];
 }
 
-export function clearPrintCart(userId: number) {
-  db.prepare('DELETE FROM print_cart_items WHERE user_id = ?').run(userId);
+export async function clearPrintCart(userId: number) {
+  await mysqlPool.execute('DELETE FROM print_cart_items WHERE user_id = ?', [userId]);
 }
 
-export function findGuidebookForPrintCart(guidebookId: number) {
-  return db.prepare('SELECT id FROM guidebooks WHERE id = ?').get(guidebookId) as { id: number } | undefined;
+export async function findGuidebookForPrintCart(guidebookId: number) {
+  const [rows] = await mysqlPool.execute<RowDataPacket[]>('SELECT id FROM guidebooks WHERE id = ?', [guidebookId]);
+
+  return rows[0] as { id: number } | undefined;
 }
 
-export function upsertPrintCartItem(userId: number, guidebookId: number, quantity: number) {
-  db.prepare(`
+export async function upsertPrintCartItem(userId: number, guidebookId: number, quantity: number) {
+  await mysqlPool.execute<ResultSetHeader>(`
     INSERT INTO print_cart_items (user_id, guidebook_id, quantity)
-    VALUES (@userId, @guidebookId, @quantity)
-    ON CONFLICT(user_id, guidebook_id) DO UPDATE SET
+    VALUES (?, ?, ?)
+    ON DUPLICATE KEY UPDATE
+      quantity = VALUES(quantity),
       updated_at = CURRENT_TIMESTAMP
-  `).run({
-    userId,
-    guidebookId,
-    quantity,
-  });
+  `, [userId, guidebookId, quantity]);
 }
 
-export function updatePrintCartItemQuantity(userId: number, guidebookId: number, quantity: number) {
-  db.prepare(`
+export async function updatePrintCartItemQuantity(userId: number, guidebookId: number, quantity: number) {
+  await mysqlPool.execute(`
     UPDATE print_cart_items
-    SET quantity = @quantity,
+    SET quantity = ?,
         updated_at = CURRENT_TIMESTAMP
-    WHERE user_id = @userId
-      AND guidebook_id = @guidebookId
-  `).run({ userId, guidebookId, quantity });
+    WHERE user_id = ?
+      AND guidebook_id = ?
+  `, [quantity, userId, guidebookId]);
 }
 
-export function deletePrintCartItem(userId: number, guidebookId: number) {
-  db.prepare(`
+export async function deletePrintCartItem(userId: number, guidebookId: number) {
+  await mysqlPool.execute(`
     DELETE FROM print_cart_items
     WHERE user_id = ?
       AND guidebook_id = ?
-  `).run(userId, guidebookId);
+  `, [userId, guidebookId]);
 }

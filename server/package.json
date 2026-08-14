@@ -10,7 +10,6 @@
   },
   "dependencies": {
     "@types/jsonwebtoken": "^9.0.10",
-    "better-sqlite3": "latest",
     "cors": "latest",
     "express": "latest",
     "jsonwebtoken": "^9.0.3",
@@ -18,7 +17,6 @@
     "tsx": "latest"
   },
   "devDependencies": {
-    "@types/better-sqlite3": "latest",
     "@types/cors": "latest",
     "@types/express": "latest",
     "@types/node": "latest",

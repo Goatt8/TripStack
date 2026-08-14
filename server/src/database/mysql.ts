@@ -1,10 +1,13 @@
 import mysql from 'mysql2/promise';
 import { loadLocalEnvironment } from './env.js';
+import { seedMySqlDatabase } from './mysqlSeed.js';
 import { mysqlSchemaStatements } from './mysqlSchema.js';
 
 loadLocalEnvironment();
 
-export function createMySqlPool() {
+export const mysqlPool = createMySqlPool();
+
+function createMySqlPool() {
   return mysql.createPool({
     host: process.env.DB_HOST ?? 'localhost',
     port: Number(process.env.DB_PORT ?? 3306),
@@ -18,11 +21,11 @@ export function createMySqlPool() {
 }
 
 export async function initializeMySqlDatabase() {
-  const pool = createMySqlPool();
-
   for (const statement of mysqlSchemaStatements) {
-    await pool.execute(statement);
+    await mysqlPool.execute(statement);
   }
 
-  return pool;
+  await seedMySqlDatabase(mysqlPool);
+
+  return mysqlPool;
 }

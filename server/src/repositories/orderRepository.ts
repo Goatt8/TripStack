@@ -1,4 +1,5 @@
-import { db } from '../db.js';
+import type { ResultSetHeader, RowDataPacket } from 'mysql2';
+import { mysqlPool } from '../database/mysql.js';
 
 export type OrderRow = {
   id: number;
@@ -50,59 +51,75 @@ const orderSelectSql = `
   LEFT JOIN custom_prints ON custom_prints.id = orders.custom_print_id
 `;
 
-export function getOrderRows() {
-  return db.prepare(`
+export async function getOrderRows() {
+  const [rows] = await mysqlPool.execute<RowDataPacket[]>(`
     ${orderSelectSql}
     ORDER BY orders.created_at DESC
-  `).all() as OrderRow[];
+  `);
+
+  return rows as OrderRow[];
 }
 
-export function findGuidebookPrice(guidebookId: number) {
-  return db.prepare('SELECT price FROM guidebooks WHERE id = ?').get(guidebookId) as { price: number } | undefined;
-}
+export async function createPrintOrder(input: CreatePrintOrderInput) {
+  const connection = await mysqlPool.getConnection();
 
-export function createPrintOrder(input: CreatePrintOrderInput) {
-  const guidebook = findGuidebookPrice(input.guidebookId);
+  try {
+    await connection.beginTransaction();
 
-  if (!guidebook) {
-    return null;
-  }
+    const [guidebookRows] = await connection.execute<RowDataPacket[]>(
+      'SELECT price FROM guidebooks WHERE id = ?',
+      [input.guidebookId],
+    );
+    const guidebook = guidebookRows[0] as { price: number } | undefined;
 
-  const orderId = db.transaction(() => {
-    const customPrint = db.prepare(`
+    if (!guidebook) {
+      await connection.rollback();
+      return null;
+    }
+
+    const [customPrint] = await connection.execute<ResultSetHeader>(`
       INSERT INTO custom_prints (consumer_id, guidebook_id, selected_layout_type)
       VALUES (?, ?, ?)
-    `).run(input.consumerId, input.guidebookId, input.selectedLayoutType);
+    `, [input.consumerId, input.guidebookId, input.selectedLayoutType]);
 
-    const order = db.prepare(`
+    const [order] = await connection.execute<ResultSetHeader>(`
       INSERT INTO orders (consumer_id, guidebook_id, custom_print_id, quantity, total_price, status, shipping_memo)
       VALUES (?, ?, ?, ?, ?, 'pending', ?)
-    `).run(
+    `, [
       input.consumerId,
       input.guidebookId,
-      customPrint.lastInsertRowid,
+      customPrint.insertId,
       input.quantity,
       guidebook.price * input.quantity,
       input.shippingMemo,
+    ]);
+
+    await connection.execute(
+      'UPDATE guidebooks SET print_count = print_count + ? WHERE id = ?',
+      [input.quantity, input.guidebookId],
     );
 
-    db.prepare('UPDATE guidebooks SET print_count = print_count + ? WHERE id = ?').run(input.quantity, input.guidebookId);
+    await connection.commit();
+    return findOrderById(order.insertId);
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
+}
 
-    return Number(order.lastInsertRowid);
-  })();
+export async function updateOrderStatus(orderId: number, status: string) {
+  await mysqlPool.execute('UPDATE orders SET status = ? WHERE id = ?', [status, orderId]);
 
   return findOrderById(orderId);
 }
 
-export function updateOrderStatus(orderId: number, status: string) {
-  db.prepare('UPDATE orders SET status = ? WHERE id = ?').run(status, orderId);
-
-  return findOrderById(orderId);
-}
-
-function findOrderById(orderId: number) {
-  return db.prepare(`
+async function findOrderById(orderId: number) {
+  const [rows] = await mysqlPool.execute<RowDataPacket[]>(`
     ${orderSelectSql}
     WHERE orders.id = ?
-  `).get(orderId) as OrderRow | undefined;
+  `, [orderId]);
+
+  return rows[0] as OrderRow | undefined;
 }

@@ -2,7 +2,7 @@ import cors from 'cors';
 import express, { type Request, type Response } from 'express';
 import jwt from 'jsonwebtoken';
 import { randomBytes, scryptSync, timingSafeEqual } from 'node:crypto';
-import { initializeDatabase } from './db.js';
+import { initializeMySqlDatabase } from './database/mysql.js';
 import {
   createGuidebook,
   deleteGuidebookWithDependencies,
@@ -41,8 +41,6 @@ import {
   updateUserAccount,
   updateUserProfile,
 } from './repositories/userRepository.js';
-
-initializeDatabase();
 
 type GeoapifyGeocodeResponse = {
   results?: Array<{
@@ -156,7 +154,7 @@ function getBearerToken(request: Request) {
   return authorization.slice('Bearer '.length).trim();
 }
 
-function getRequestUser(request: Request) {
+async function getRequestUser(request: Request) {
   const token = getBearerToken(request);
 
   if (!token) {
@@ -177,13 +175,13 @@ function getRequestUser(request: Request) {
     return null;
   }
 
-  const user = findUserById(userId);
+  const user = await findUserById(userId);
 
   return user ? serializeUser(user) : null;
 }
 
-function requireAdminUser(request: Request, response: Response) {
-  const currentUser = getRequestUser(request);
+async function requireAdminUser(request: Request, response: Response) {
+  const currentUser = await getRequestUser(request);
 
   if (!currentUser) {
     response.status(401).json({ message: '로그인이 필요합니다.' });
@@ -198,8 +196,8 @@ function requireAdminUser(request: Request, response: Response) {
   return currentUser;
 }
 
-function requireAuthUser(request: Request, response: Response) {
-  const currentUser = getRequestUser(request);
+async function requireAuthUser(request: Request, response: Response) {
+  const currentUser = await getRequestUser(request);
 
   if (!currentUser) {
     response.status(401).json({ message: '로그인이 필요합니다.' });
@@ -305,7 +303,7 @@ app.get('/api/maps/preview', async (request, response) => {
   }
 });
 
-app.get('/api/maps/cities', (request, response) => {
+app.get('/api/maps/cities', async (request, response) => {
   const country = typeof request.query.country === 'string' ? request.query.country : '';
 
   if (!country) {
@@ -313,14 +311,14 @@ app.get('/api/maps/cities', (request, response) => {
     return;
   }
 
-  response.json(getLocationCities(country));
+  response.json(await getLocationCities(country));
 });
 
-app.get('/api/users', (request, response) => {
-  response.json(uniqueBy(getUserRows(), (row) => `${row.username}-${row.avatarUrl}`));
+app.get('/api/users', async (request, response) => {
+  response.json(uniqueBy(await getUserRows(), (row) => `${row.username}-${row.avatarUrl}`));
 });
 
-app.post('/api/auth/signup', (request, response) => {
+app.post('/api/auth/signup', async (request, response) => {
   const { adminCode, displayName, email, loginId, password, profileImageUrl } = request.body as {
     adminCode?: string;
     displayName?: string;
@@ -340,7 +338,7 @@ app.post('/api/auth/signup', (request, response) => {
     return;
   }
 
-  const existingUser = findExistingUserByLoginIdOrEmail(normalizedLoginId, normalizedEmail);
+  const existingUser = await findExistingUserByLoginIdOrEmail(normalizedLoginId, normalizedEmail);
 
   if (existingUser) {
     response.status(409).json({ message: '이미 사용 중인 아이디 또는 이메일입니다.' });
@@ -354,7 +352,7 @@ app.post('/api/auth/signup', (request, response) => {
 
   const isAdmin = normalizedAdminCode === adminSignupCode ? 1 : 0;
 
-  const userId = createUser({
+  const userId = await createUser({
     displayName: normalizedDisplayName,
     email: normalizedEmail,
     loginId: normalizedLoginId,
@@ -363,7 +361,7 @@ app.post('/api/auth/signup', (request, response) => {
     isAdmin,
   });
 
-  const user = findUserById(userId);
+  const user = await findUserById(userId);
 
   if (!user) {
     response.status(404).json({ message: 'User not found.' });
@@ -376,7 +374,7 @@ app.post('/api/auth/signup', (request, response) => {
   });
 });
 
-app.post('/api/auth/login', (request, response) => {
+app.post('/api/auth/login', async (request, response) => {
   const { loginId, password } = request.body as { loginId?: string; password?: string };
   const normalizedLoginId = loginId?.trim();
 
@@ -385,7 +383,7 @@ app.post('/api/auth/login', (request, response) => {
     return;
   }
 
-  const user = findUserByLoginIdWithPassword(normalizedLoginId);
+  const user = await findUserByLoginIdWithPassword(normalizedLoginId);
 
   if (!user) {
     response.status(404).json({ message: '존재하지 않는 계정입니다.' });
@@ -404,8 +402,8 @@ app.post('/api/auth/login', (request, response) => {
   });
 });
 
-app.patch('/api/users/me/profile', (request, response) => {
-  const currentUser = requireAuthUser(request, response);
+app.patch('/api/users/me/profile', async (request, response) => {
+  const currentUser = await requireAuthUser(request, response);
   const { displayName, profileImageUrl } = request.body as {
     displayName?: string;
     profileImageUrl?: string;
@@ -422,14 +420,14 @@ app.patch('/api/users/me/profile', (request, response) => {
     return;
   }
 
-  const changes = updateUserProfile(currentUser.id, normalizedDisplayName, profileImageUrl?.trim() || '');
+  const changes = await updateUserProfile(currentUser.id, normalizedDisplayName, profileImageUrl?.trim() || '');
 
   if (changes === 0) {
     response.status(404).json({ message: 'User not found.' });
     return;
   }
 
-  const user = findUserById(currentUser.id);
+  const user = await findUserById(currentUser.id);
 
   if (!user) {
     response.status(404).json({ message: 'User not found.' });
@@ -439,8 +437,8 @@ app.patch('/api/users/me/profile', (request, response) => {
   response.json(serializeUser(user));
 });
 
-app.patch('/api/users/me/account', (request, response) => {
-  const authUser = requireAuthUser(request, response);
+app.patch('/api/users/me/account', async (request, response) => {
+  const authUser = await requireAuthUser(request, response);
   const { currentPassword, email, newPassword } = request.body as {
     currentPassword?: string;
     email?: string;
@@ -459,7 +457,7 @@ app.patch('/api/users/me/account', (request, response) => {
     return;
   }
 
-  const currentUser = findUserPasswordHashById(authUser.id);
+  const currentUser = await findUserPasswordHashById(authUser.id);
 
   if (!currentUser) {
     response.status(404).json({ message: 'User not found.' });
@@ -473,20 +471,20 @@ app.patch('/api/users/me/account', (request, response) => {
     }
   }
 
-  const existingEmailOwner = findUserIdByEmailExcept(normalizedEmail, authUser.id);
+  const existingEmailOwner = await findUserIdByEmailExcept(normalizedEmail, authUser.id);
 
   if (existingEmailOwner) {
     response.status(409).json({ message: '이미 사용 중인 이메일입니다.' });
     return;
   }
 
-  updateUserAccount(
+  await updateUserAccount(
     authUser.id,
     normalizedEmail,
     normalizedNewPassword ? createPasswordHash(normalizedNewPassword) : null,
   );
 
-  const user = findUserById(authUser.id);
+  const user = await findUserById(authUser.id);
 
   if (!user) {
     response.status(404).json({ message: 'User not found.' });
@@ -496,8 +494,8 @@ app.patch('/api/users/me/account', (request, response) => {
   response.json(serializeUser(user));
 });
 
-app.patch('/api/admin/users/:id', (request, response) => {
-  if (!requireAdminUser(request, response)) {
+app.patch('/api/admin/users/:id', async (request, response) => {
+  if (!await requireAdminUser(request, response)) {
     return;
   }
 
@@ -511,14 +509,14 @@ app.patch('/api/admin/users/:id', (request, response) => {
     return;
   }
 
-  const existingEmailOwner = findUserIdByEmailExcept(normalizedEmail, userId);
+  const existingEmailOwner = await findUserIdByEmailExcept(normalizedEmail, userId);
 
   if (existingEmailOwner) {
     response.status(409).json({ message: '이미 사용 중인 이메일입니다.' });
     return;
   }
 
-  const changes = updateAdminUser({
+  const changes = await updateAdminUser({
     displayName: normalizedDisplayName,
     email: normalizedEmail,
     isAdmin,
@@ -531,7 +529,7 @@ app.patch('/api/admin/users/:id', (request, response) => {
     return;
   }
 
-  const user = findUserById(userId);
+  const user = await findUserById(userId);
 
   if (!user) {
     response.status(404).json({ message: 'User not found.' });
@@ -541,8 +539,8 @@ app.patch('/api/admin/users/:id', (request, response) => {
   response.json(serializeUser(user));
 });
 
-app.delete('/api/admin/users/:id', (request, response) => {
-  if (!requireAdminUser(request, response)) {
+app.delete('/api/admin/users/:id', async (request, response) => {
+  if (!await requireAdminUser(request, response)) {
     return;
   }
 
@@ -553,14 +551,14 @@ app.delete('/api/admin/users/:id', (request, response) => {
     return;
   }
 
-  const dependencyCount = getUserDependencyCount(userId);
+  const dependencyCount = await getUserDependencyCount(userId);
 
   if (dependencyCount > 0) {
     response.status(409).json({ message: '연결된 가이드북 또는 주문이 있는 계정은 삭제할 수 없습니다.' });
     return;
   }
 
-  const changes = deleteUserById(userId);
+  const changes = await deleteUserById(userId);
 
   if (changes === 0) {
     response.status(404).json({ message: 'User not found.' });
@@ -570,63 +568,63 @@ app.delete('/api/admin/users/:id', (request, response) => {
   response.status(204).send();
 });
 
-app.get('/api/admin/users', (request, response) => {
-  if (!requireAdminUser(request, response)) {
+app.get('/api/admin/users', async (request, response) => {
+  if (!await requireAdminUser(request, response)) {
     return;
   }
 
-  response.json(getUserRows());
+  response.json(await getUserRows());
 });
 
-app.get('/api/admin/guidebooks', (request, response) => {
-  if (!requireAdminUser(request, response)) {
+app.get('/api/admin/guidebooks', async (request, response) => {
+  if (!await requireAdminUser(request, response)) {
     return;
   }
 
-  response.json(getGuidebookRows());
+  response.json(await getGuidebookRows());
 });
 
-app.get('/api/admin/orders', (request, response) => {
-  if (!requireAdminUser(request, response)) {
+app.get('/api/admin/orders', async (request, response) => {
+  if (!await requireAdminUser(request, response)) {
     return;
   }
 
-  response.json(getOrderRows());
+  response.json(await getOrderRows());
 });
 
-app.get('/api/guidebooks', (request, response) => {
+app.get('/api/guidebooks', async (request, response) => {
   const region = request.query.region;
 
-  response.json(getGuidebookRows(typeof region === 'string' ? region : null));
+  response.json(await getGuidebookRows(typeof region === 'string' ? region : null));
 });
 
-app.get('/api/guidebooks/:id/blocks', (request, response) => {
-  response.json(getGuidebookBlocks(request.params.id));
+app.get('/api/guidebooks/:id/blocks', async (request, response) => {
+  response.json(await getGuidebookBlocks(request.params.id));
 });
 
-app.get('/api/print-cart', (request, response) => {
-  const currentUser = requireAuthUser(request, response);
+app.get('/api/print-cart', async (request, response) => {
+  const currentUser = await requireAuthUser(request, response);
 
   if (!currentUser) {
     return;
   }
 
-  response.json(getPrintCartItems(currentUser.id));
+  response.json(await getPrintCartItems(currentUser.id));
 });
 
-app.delete('/api/print-cart', (request, response) => {
-  const currentUser = requireAuthUser(request, response);
+app.delete('/api/print-cart', async (request, response) => {
+  const currentUser = await requireAuthUser(request, response);
 
   if (!currentUser) {
     return;
   }
 
-  clearPrintCart(currentUser.id);
+  await clearPrintCart(currentUser.id);
   response.status(204).send();
 });
 
-app.post('/api/print-cart', (request, response) => {
-  const currentUser = requireAuthUser(request, response);
+app.post('/api/print-cart', async (request, response) => {
+  const currentUser = await requireAuthUser(request, response);
   const { guidebookId, quantity } = request.body as {
     guidebookId?: number;
     quantity?: number;
@@ -641,20 +639,20 @@ app.post('/api/print-cart', (request, response) => {
     return;
   }
 
-  const guidebook = findGuidebookForPrintCart(guidebookId);
+  const guidebook = await findGuidebookForPrintCart(guidebookId);
 
   if (!guidebook) {
     response.status(404).json({ message: 'Guidebook not found.' });
     return;
   }
 
-  upsertPrintCartItem(currentUser.id, guidebookId, Math.max(1, quantity ?? 1));
+  await upsertPrintCartItem(currentUser.id, guidebookId, Math.max(1, quantity ?? 1));
 
-  response.status(201).json(getPrintCartItems(currentUser.id).find((item) => item.guidebookId === guidebookId));
+  response.status(201).json((await getPrintCartItems(currentUser.id)).find((item) => item.guidebookId === guidebookId));
 });
 
-app.patch('/api/print-cart/:guidebookId', (request, response) => {
-  const currentUser = requireAuthUser(request, response);
+app.patch('/api/print-cart/:guidebookId', async (request, response) => {
+  const currentUser = await requireAuthUser(request, response);
   const guidebookId = Number(request.params.guidebookId);
   const { quantity } = request.body as { quantity?: number };
 
@@ -667,9 +665,9 @@ app.patch('/api/print-cart/:guidebookId', (request, response) => {
     return;
   }
 
-  updatePrintCartItemQuantity(currentUser.id, guidebookId, quantity);
+  await updatePrintCartItemQuantity(currentUser.id, guidebookId, quantity);
 
-  const updated = getPrintCartItems(currentUser.id).find((item) => item.guidebookId === guidebookId);
+  const updated = (await getPrintCartItems(currentUser.id)).find((item) => item.guidebookId === guidebookId);
 
   if (!updated) {
     response.status(404).json({ message: 'Print cart item not found.' });
@@ -679,8 +677,8 @@ app.patch('/api/print-cart/:guidebookId', (request, response) => {
   response.json(updated);
 });
 
-app.delete('/api/print-cart/:guidebookId', (request, response) => {
-  const currentUser = requireAuthUser(request, response);
+app.delete('/api/print-cart/:guidebookId', async (request, response) => {
+  const currentUser = await requireAuthUser(request, response);
   const guidebookId = Number(request.params.guidebookId);
 
   if (!currentUser) {
@@ -692,13 +690,13 @@ app.delete('/api/print-cart/:guidebookId', (request, response) => {
     return;
   }
 
-  deletePrintCartItem(currentUser.id, guidebookId);
+  await deletePrintCartItem(currentUser.id, guidebookId);
 
   response.status(204).send();
 });
 
-app.post('/api/guidebooks', (request, response) => {
-  const currentUser = requireAuthUser(request, response);
+app.post('/api/guidebooks', async (request, response) => {
+  const currentUser = await requireAuthUser(request, response);
   const {
     block,
     blocks,
@@ -723,7 +721,7 @@ app.post('/api/guidebooks', (request, response) => {
     return;
   }
 
-  const guidebookId = createGuidebook({
+  const guidebookId = await createGuidebook({
     block,
     blocks,
     country,
@@ -736,14 +734,14 @@ app.post('/api/guidebooks', (request, response) => {
     routePoints,
     title,
   });
-  const guidebook = getGuidebookById(guidebookId);
-  const createdBlocks = getGuidebookBlocks(guidebookId);
+  const guidebook = await getGuidebookById(guidebookId);
+  const createdBlocks = await getGuidebookBlocks(guidebookId);
 
   response.status(201).json({ guidebook, blocks: createdBlocks });
 });
 
-app.patch('/api/guidebooks/:id', (request, response) => {
-  const currentUser = requireAuthUser(request, response);
+app.patch('/api/guidebooks/:id', async (request, response) => {
+  const currentUser = await requireAuthUser(request, response);
   const guidebookId = Number(request.params.id);
   const {
     blocks,
@@ -773,7 +771,7 @@ app.patch('/api/guidebooks/:id', (request, response) => {
     return;
   }
 
-  const guidebook = findGuidebookOwner(guidebookId);
+  const guidebook = await findGuidebookOwner(guidebookId);
 
   if (!guidebook) {
     response.status(404).json({ message: 'Guidebook not found.' });
@@ -785,7 +783,7 @@ app.patch('/api/guidebooks/:id', (request, response) => {
     return;
   }
 
-  updateGuidebook({
+  await updateGuidebook({
     blocks,
     country,
     coverImageUrl,
@@ -798,14 +796,14 @@ app.patch('/api/guidebooks/:id', (request, response) => {
     title,
   });
 
-  const updatedGuidebook = getGuidebookById(guidebookId);
-  const updatedBlocks = getGuidebookBlocks(guidebookId);
+  const updatedGuidebook = await getGuidebookById(guidebookId);
+  const updatedBlocks = await getGuidebookBlocks(guidebookId);
 
   response.json({ guidebook: updatedGuidebook, blocks: updatedBlocks });
 });
 
-app.delete('/api/guidebooks/:id', (request, response) => {
-  const currentUser = requireAuthUser(request, response);
+app.delete('/api/guidebooks/:id', async (request, response) => {
+  const currentUser = await requireAuthUser(request, response);
   const guidebookId = Number(request.params.id);
 
   if (!currentUser) {
@@ -817,7 +815,7 @@ app.delete('/api/guidebooks/:id', (request, response) => {
     return;
   }
 
-  const guidebook = findGuidebookOwner(guidebookId);
+  const guidebook = await findGuidebookOwner(guidebookId);
 
   if (!guidebook) {
     response.status(404).json({ message: 'Guidebook not found.' });
@@ -829,18 +827,18 @@ app.delete('/api/guidebooks/:id', (request, response) => {
     return;
   }
 
-  deleteGuidebookWithDependencies(guidebookId);
+  await deleteGuidebookWithDependencies(guidebookId);
   response.status(204).send();
 });
 
-app.get('/api/orders', (request, response) => {
-  const currentUser = requireAuthUser(request, response);
+app.get('/api/orders', async (request, response) => {
+  const currentUser = await requireAuthUser(request, response);
 
   if (!currentUser) {
     return;
   }
 
-  const orders = getOrderRows().filter((order) => (
+  const orders = (await getOrderRows()).filter((order) => (
     typeof order === 'object'
       && order !== null
       && 'creatorId' in order
@@ -850,14 +848,14 @@ app.get('/api/orders', (request, response) => {
   response.json(orders);
 });
 
-app.get('/api/orders/me', (request, response) => {
-  const currentUser = requireAuthUser(request, response);
+app.get('/api/orders/me', async (request, response) => {
+  const currentUser = await requireAuthUser(request, response);
 
   if (!currentUser) {
     return;
   }
 
-  response.json(getOrderRows().filter((order) => (
+  response.json((await getOrderRows()).filter((order) => (
     typeof order === 'object'
       && order !== null
       && 'consumerId' in order
@@ -865,8 +863,8 @@ app.get('/api/orders/me', (request, response) => {
   )));
 });
 
-app.post('/api/orders', (request, response) => {
-  const currentUser = requireAuthUser(request, response);
+app.post('/api/orders', async (request, response) => {
+  const currentUser = await requireAuthUser(request, response);
   const { guidebookId, quantity, selectedLayoutType, shippingMemo } = request.body as {
     guidebookId?: number;
     quantity?: number;
@@ -883,7 +881,7 @@ app.post('/api/orders', (request, response) => {
     return;
   }
 
-  const created = createPrintOrder({
+  const created = await createPrintOrder({
     consumerId: currentUser.id,
     guidebookId,
     quantity: Math.max(1, quantity ?? 1),
@@ -899,8 +897,8 @@ app.post('/api/orders', (request, response) => {
   response.status(201).json(created);
 });
 
-app.patch('/api/orders/:id/status', (request, response) => {
-  if (!requireAdminUser(request, response)) {
+app.patch('/api/orders/:id/status', async (request, response) => {
+  if (!await requireAdminUser(request, response)) {
     return;
   }
 
@@ -912,11 +910,17 @@ app.patch('/api/orders/:id/status', (request, response) => {
     return;
   }
 
-  const updated = updateOrderStatus(Number(request.params.id), nextStatus);
+  const updated = await updateOrderStatus(Number(request.params.id), nextStatus);
 
   response.json(updated);
 });
 
-app.listen(port, () => {
-  console.log(`TripStack API running on http://localhost:${port}`);
-});
+async function startServer() {
+  await initializeMySqlDatabase();
+
+  app.listen(port, () => {
+    console.log(`TripStack API running on http://localhost:${port}`);
+  });
+}
+
+void startServer();

@@ -1,7 +1,7 @@
-import { db } from '../db.js';
+import { mysqlPool } from '../database/mysql.js';
 
-export function getLocationCities(country: string) {
-  return db.prepare(`
+export async function getLocationCities(country: string) {
+  const [rows] = await mysqlPool.execute(`
     SELECT
       country,
       city,
@@ -11,5 +11,7 @@ export function getLocationCities(country: string) {
     FROM location_presets
     WHERE country = ?
     ORDER BY sort_order ASC, city ASC
-  `).all(country);
+  `, [country]);
+
+  return rows;
 }
