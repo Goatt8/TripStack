@@ -7,7 +7,7 @@
        <sub><b> WebApp Tripstack </b></sub><br><br>
       <img src="https://img.shields.io/badge/Next.js-000000?style=flat-square&logo=next.js&logoColor=white">
       <img src="https://img.shields.io/badge/React-61DAFB?style=flat-square&logo=react&logoColor=black">
-      <img src="https://img.shields.io/badge/SQLite-003B57?style=flat-square&logo=sqlite&logoColor=white">
+      <img src="https://img.shields.io/badge/MySQL-4479A1?style=flat-square&logo=mysql&logoColor=white">
       <img src="https://img.shields.io/badge/Zustand-4A3728?style=flat-square&logo=zustand&logoColor=white">
       <img src="https://img.shields.io/badge/TypeScript-3178C6?style=flat-square&logo=typescript&logoColor=white">
       <img src="https://img.shields.io/badge/Express-000000?style=flat-square&logo=express&logoColor=white">
@@ -66,7 +66,7 @@ _____________________
 - Frontend: Next.js, React, TypeScript
 - Library, State: Zustand
 - Backend: Express, TypeScript
-- Database: SQLite, better-sqlite3
+- Database: MySQL, mysql2
 - Auth: JSON Web Token(jsonwebtoken)
 - Runtime: Docker Compose
 
@@ -74,11 +74,27 @@ _____________________
 
 - Next.js는 파일 기반 라우팅과 React 컴포넌트 구조를 활용해 메인 화면, 크리에이터 화면, 인쇄하기/판매목록 화면을 빠르게 나누기에 적합했습니다.
 - React는 상세 모달, 검색 탭, 장바구니 수량 변경처럼 상태가 필요한 UI를 컴포넌트 단위로 관리하기 좋았습니다.
-- Express는 가이드북, 상세 블록, 장바구니, 주문 API를 단순한 REST 구조로 구현하기에 적합했습니다.
-- SQLite는 별도 DB 서버 설치 없이 Docker 실행 직후 더미데이터와 CRUD 흐름을 확인할 수 있어 과제 환경에 적합했습니다.
+- Express는 가이드북, 상세 블록, 장바구니, 주문 API를 REST 구조로 구현하고 JWT 권한 검증을 요청 단위로 처리하기에 적합했습니다.
+- MySQL은 애플리케이션 서버와 DB를 분리하고, connection pool과 transaction을 통해 사용자/가이드북/주문 데이터를 안정적으로 다루기 위해 사용했습니다.
 - JWT는 프론트엔드와 Express API 서버가 분리된 구조에서 로그인 사용자와 관리자 권한을 API 요청 단위로 검증하기 위해 사용했습니다.
-- Docker Compose는 심사자가 프론트엔드와 백엔드를 한 번에 실행할 수 있도록 하기 위해 사용했습니다.
+- Docker Compose는 심사자가 프론트엔드, 백엔드, MySQL을 한 번에 실행할 수 있도록 하기 위해 사용했습니다.
 - Zustand로 인쇄목록상태를 store 상태관리로 중앙집중해 관리를 용이하게 변경했습니다.
+
+### 서버 아키텍처
+
+```txt
+Client(Next.js:3000)
+  -> Express API Server(4000)
+    -> Repository Layer
+      -> mysql2 Connection Pool
+        -> MySQL(3306)
+```
+
+- `server.ts`: Express 라우팅, JWT 인증/권한 검증, 요청/응답 처리
+- `repositories/*`: 기능별 SQL 실행과 데이터 변환, 주문 생성 transaction 처리
+- `database/mysql.ts`: MySQL connection pool 생성, schema 초기화, seed 실행
+- `database/mysqlSchema.ts`: MySQL 테이블 생성 SQL
+- `database/mysqlSeed.ts`: 초기 사용자, 가이드북, 위치 데이터 seed
 
 ### 주요 디렉터리 구조
 
@@ -113,10 +129,18 @@ TripStack
 │       └── types                     # 프론트 공용 타입
 ├── server
 │   └── src
-│       ├── db.ts                     # SQLite 연결, 테이블 생성, seed 데이터
+│       ├── database
+│       │   ├── env.ts                # 환경변수 기반 DB 설정
+│       │   ├── mysql.ts              # MySQL pool, schema, seed 초기화
+│       │   ├── mysqlSchema.ts        # MySQL 테이블 생성 SQL
+│       │   └── mysqlSeed.ts          # 초기 더미데이터 seed
+│       ├── repositories
+│       │   ├── userRepository.ts     # 사용자/인증/프로필 SQL
+│       │   ├── guidebookRepository.ts # 가이드북/상세 블록 SQL
+│       │   ├── orderRepository.ts    # 주문 생성 transaction과 주문 SQL
+│       │   ├── printCartRepository.ts # 인쇄목록 SQL
+│       │   └── locationRepository.ts # 국가/도시 위치 SQL
 │       └── server.ts                 # Express REST API
-├── data
-│   └── tripstack.db                  # 로컬 SQLite DB 파일
 └── docker-compose.yml
 ```
 
@@ -137,6 +161,7 @@ TripStack
 - 로그인/회원가입 성공 시 Express 서버가 `jsonwebtoken`으로 JWT를 발급합니다.
 - 클라이언트는 JWT를 `tripstack.authToken`에 저장하고, 이후 API 요청마다 `Authorization: Bearer <token>` 헤더로 전달합니다.
 - Express는 `jwt.verify()`로 토큰을 검증한 뒤 토큰 payload의 `userId`를 기준으로 DB의 `users` 테이블을 조회합니다.
+- 인증 사용자 API는 URL이나 body로 전달된 `userId`를 신뢰하지 않고 `requireAuthUser()`로 확인한 현재 로그인 사용자의 `id`를 사용합니다.
 - 관리자 API는 `requireAdminUser()` 가드 함수로 `is_admin` 값을 확인하며, 관리자가 아니면 `401` 또는 `403` 응답으로 차단합니다.
 - 프론트 라우트에서도 `/admin`은 관리자만 접근 가능하고, `/creator`는 로그인 사용자만 접근 가능하도록 1차 보호를 적용했습니다.
 
@@ -153,8 +178,8 @@ TripStack
 인증 사용자 API:
 
 - `POST /api/auth/signup`, `POST /api/auth/login`: 회원가입과 로그인, JWT 발급
-- `PATCH /api/users/:id/profile`: 프로필 정보 수정
-- `PATCH /api/users/:id/account`: 이메일/비밀번호 수정
+- `PATCH /api/users/me/profile`: 현재 로그인 사용자의 프로필 정보 수정
+- `PATCH /api/users/me/account`: 현재 로그인 사용자의 이메일/비밀번호 수정
 - `GET /api/print-cart`: 인쇄목록 조회
 - `POST /api/print-cart`: 인쇄목록 담기
 - `PATCH /api/print-cart/:guidebookId`: 인쇄목록 수량 변경
@@ -175,7 +200,10 @@ _____________________
 <br>
 
 
-## 4. 실행 방법 (Docker)
+## 4. 실행 방법
+
+<details>
+<summary><strong>Docker Compose 및 로컬 개발 실행</strong></summary>
 
 저장소 클론 후 프로젝트 루트에서 실행합니다.
 
@@ -185,16 +213,25 @@ cd TripStack
 docker compose up --build
 ```
 
+Docker Compose 실행 시 MySQL(3306), Express API(4000), Next.js client(3000)가 함께 실행됩니다.
+
 필요한 환경변수는 `.env.example`을 참고해 `.env`에 작성할 수 있습니다.
 
 ```env
 WEB_PORT=3000
 API_PORT=4000
+DB_HOST=localhost
+DB_PORT=3306
+DB_USER=root
+DB_PASSWORD=tripstack1234
+DB_NAME=tripstack
 ADMIN_SIGNUP_CODE=tripstack-admin
 JWT_SECRET=change-this-tripstack-secret
 GEOAPIFY_API_KEY=
 NEXT_PUBLIC_GEOAPIFY_API_KEY=
 ```
+
+Docker Compose 내부에서 Express 서버는 `DB_HOST=mysql`로 MySQL 컨테이너에 접속합니다. 로컬에서 `npm run dev`로 서버를 직접 실행할 때는 `.env`의 `DB_HOST=localhost`를 사용해 Docker로 열린 MySQL에 접속합니다.
 
 접속 주소:
 
@@ -223,6 +260,14 @@ http://localhost:4001/api/health
 
 로컬 개발 실행이 필요한 경우:
 
+먼저 MySQL 컨테이너를 실행합니다.
+
+```bash
+docker compose up mysql
+```
+
+이후 서버와 클라이언트를 각각 실행합니다.
+
 ```bash
 cd server
 npm install
@@ -234,6 +279,8 @@ cd client
 npm install
 npm run dev
 ```
+
+</details>
 
 _____________________
 <br>
@@ -321,7 +368,8 @@ ____________
 서버는 토큰을 검증해 현재 로그인 사용자를 조회하고, 관리자 API는 requireAdminUser 미들웨어성 함수로 보호했습니다.
 이를 통해 관리자 권한이 없는 사용자는 사용자/가이드북/주문 관리 API에 접근할 수 없도록 했고, 로그인하지 않은 사용자는 크리에이터 화면과 관리자 화면에 접근하지 못하도록 처리했습니다.
 
-현재 주문내역 조회는 JWT 기준으로 본인 주문만 조회되도록 구현했으며, 인쇄목록과 가이드북 수정/삭제 API도 JWT 기반 소유자 검증으로 확장할 예정입니다.
+현재 인쇄목록, 인쇄 주문, 가이드북 생성/수정/삭제, 프로필/계정 수정은 모두 JWT 기준으로 현재 로그인 사용자를 확인합니다.
+프론트에서 임의의 `userId`를 보내더라도 서버는 URL이나 body의 사용자 id를 신뢰하지 않고, 토큰에서 검증된 `currentUser.id`를 기준으로 처리합니다.
 
 ```
 // 관리자를 검증하는 requireAdminUser
@@ -392,10 +440,13 @@ _____________________
 
 ## 6. AI 도구 사용 내역
 
+<details>
+<summary><strong>Codex/Gemini 활용 내역</strong></summary>
+
 ### Codex
 
 - 프로젝트 설계 : 전체적인 디렉터리 구조와 컴포넌트 분리, 상태 관리 방식을 함께 설계하며 개발 방향을 구체화했습니다.
-- 코드 구현 및 리팩토링 : Next.js, Express, SQLite 기반의 CRUD 기능 구현과 컴포넌트 리팩토링, 반복 코드 개선에 활용했습니다.
+- 코드 구현 및 리팩토링 : Next.js, Express, MySQL 기반의 CRUD 기능 구현과 컴포넌트 리팩토링, 반복 코드 개선에 활용했습니다.
 - 디버깅 : API 연동 오류, 라우팅 문제, 비동기 처리, 타입 오류 등을 분석하고 원인을 빠르게 찾아 수정했습니다.
 - 코드 리뷰 : 작성한 코드를 검토하며 불필요한 로직 제거, 가독성 향상, 유지보수성을 개선했습니다.
 - 과제 요구사항 검증 : 과제 요구사항과 현재 구현 상태를 비교하며 누락된 기능과 README 문서를 점검했습니다.
@@ -410,6 +461,8 @@ _____________________
 - 초기에 AI가 제안한 구조가 실제 서비스 흐름과 맞지 않아 컴포넌트 이름과 화면 역할을 여러 차례 정리했습니다.
 - 더미 데이터를 생성함에 있어, 원하는 이미지나 컨셉에 맞지않아 여러차례 프롬프트를 수정하며 데이터를 초안을 정리했습니다.
 
+</details>
+
 
 _____________________
 <br>
@@ -417,7 +470,6 @@ _____________________
 ## 7. 앞으로 개선할 부분
 
 - 주문 흐름 UI/상태 정리
-- MySQL 전환
+- DB 마이그레이션 도구 적용 및 운영 백업 전략 구성
 - AWS EC2 또는 Render/Vercel 배포
 - 영상 분석 더미 플로우 추가
-
