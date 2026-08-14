@@ -344,6 +344,48 @@ function requireAdminUser(request, response) {
 
 </details>
 
+<details>
+<summary><strong>2. SQLite 에서 MySQL로의 전환</strong></summary>
+
+> #### 문제
+> SQLite는 설정이 간단하고 로컬 개발에는 편하지만, 서비스 구조가 커질수록 다음과 같은 한계가 있다고 생각했습니다.
+- 기존에는 server.ts 안에서 직접 DB 쿼리를 실행하고 연결구조가 강해서 server.ts의 양이 방대해지는 문제가 있었습니다.
+
+✅ MySQL 전환 후 장점
+- server.ts에 모두 모아두는게 아닌 기능별로 repository를 분리해 유지 관리 가독성 측면에서 개선되었습니다.
+
+✅ MySQL Transaction
+- 하나의 사용자행동에서 파생되는 여러 로직들을 오류없이 처리하기위해, DB작업을 트랜잭션으로 행동을 묶음
+Transaction 흐름
+- getConnection() : MySQL connection pool에서 connection 하나를 빌린다.
+Transaction은 같은 connection 안에서 유지되어야 하므로, 여러 쿼리를 하나의 흐름으로 처리할 때 connection을 직접 가져온다.
+- connection.beginTransaction() : Transaction 시작
+- connection.commit() : 모든 쿼리가 성공했을 때 변경사항을 최종 반영
+- connection.rollback() : 중간에 하나라도 실패하면 transaction 시작 전 롤백
+이후 실행되는 쿼리들은 바로 최종 반영되지 않고 하나의 작업 단위로 묶임
+- connection.release() : 사용한 connection을 pool에 반납
+
+```
+const connection = await mysqlPool.getConnection();
+
+try {
+  await connection.beginTransaction();
+
+  // 1. custom_prints 저장
+  // 2. orders 저장
+  // 3. guidebooks.print_count 증가
+
+  await connection.commit();
+} catch (error) {
+  await connection.rollback();
+  throw error;
+} finally {
+  connection.release();
+}
+```
+
+</details>
+
 
 _____________________
 <br>
