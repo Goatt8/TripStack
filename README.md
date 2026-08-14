@@ -32,18 +32,12 @@ TripStack은 여행 크리에이터의 영상·사진 콘텐츠를 분석해 인
 
 ### 주요 기능
 
-- 메인 홈에서 추천 가이드북, 카테고리별 가이드북, 인기 크리에이터 조회
-- 국가/도시 기준 가이드북 검색
-- 가이드북 상세뷰에서 썸네일, 크리에이터 정보, 이동 지도, 상세 이미지/설명 확인
-- 관심 크리에이터 추가/해제
-- 상대 크리에이터 프로필과 해당 크리에이터의 가이드북 조회
-- 로그인/회원가입, 프로필 편집, 회원정보 수정, 로그아웃
-- 내 크리에이터 화면에서 가이드북 생성, 수정, 삭제 흐름 확인
-- 국가/도시 선택, 지도 위 위치 포인트 배치, 사진+텍스트 블록 기반 가이드북 생성
-- 담아둔 가이드북을 인쇄목록에서 조회, 수량 변경, 제거, 전체삭제, 주문 생성까지 확인
-- 판매목록에서 내 가이드북에 들어온 주문 데이터 테이블 확인
-- 관리자 페이지에서 사용자 목록, 가이드북 목록, 주문 목록 조회와 사용자 수정/삭제, 주문 상태 변경
-- JWT 기반 로그인 검증과 관리자 API 권한 보호
+- 여행 가이드북 조회, 검색, 상세보기, 크리에이터 프로필 탐색
+- JWT 기반 로그인/회원가입, 현재 사용자 기준 프로필/계정 수정
+- 크리에이터의 가이드북 생성, 수정, 삭제와 소유자 권한 검증
+- 인쇄목록 관리, 인쇄 주문 생성, 판매목록 조회
+- 관리자 전용 사용자/가이드북/주문 관리 API와 권한 보호
+- MySQL 기반 데이터 저장, repository 계층 분리, 주문 생성 transaction 처리
 - PC/모바일 반응형 UI
 
 _____________________
@@ -66,8 +60,8 @@ _____________________
 - Frontend: Next.js, React, TypeScript
 - Library, State: Zustand
 - Backend: Express, TypeScript
-- Database: MySQL, mysql2
-- Auth: JSON Web Token(jsonwebtoken)
+- Database: MySQL
+- Auth: JSON Web Token
 - Runtime: Docker Compose
 
 ### 선택 이유
@@ -393,14 +387,18 @@ function requireAdminUser(request, response) {
 </details>
 
 <details>
-<summary><strong>2. SQLite 에서 MySQL로의 전환</strong></summary>
+<summary><strong>2. SQLite 에서 MySQL 로의 전환</strong></summary>
 
 > #### 문제
-> SQLite는 설정이 간단하고 로컬 개발에는 편하지만, 서비스 구조가 커질수록 다음과 같은 한계가 있다고 생각했습니다.
-- 기존에는 server.ts 안에서 직접 DB 쿼리를 실행하고 연결구조가 강해서 server.ts의 양이 방대해지는 문제가 있었습니다.
+- 기존에는 SQLite 기반으로 로컬에서 빠르게 CRUD 흐름을 확인할 수 있었지만,
+- 서비스 구조가 커질수록 DB 서버 분리, 동시 요청 처리, 운영 환경 확장성 측면에서 한계가 있다고 판단했습니다.
+- 또한 `server.ts` 안에 라우팅, 인증, SQL 실행 로직이 함께 모여 있어 파일이 비대해지고 유지보수가 어려워지는 문제가 있었습니다.
 
 ✅ MySQL 전환 후 장점
-- server.ts에 모두 모아두는게 아닌 기능별로 repository를 분리해 유지 관리 가독성 측면에서 개선되었습니다.
+- 애플리케이션 서버와 DB 서버를 분리해 실제 서비스 구조에 가까운 환경으로 개선했습니다.
+- `mysql2`의 connection pool을 사용해 여러 API 요청이 들어와도 DB 연결을 효율적으로 재사용할 수 있습니다.
+- SQL 실행 로직을 기능별 repository로 분리해 `server.ts`는 라우팅과 인증 처리에 집중하도록 정리했습니다.
+- 주문 생성처럼 여러 DB 작업이 함께 성공해야 하는 기능은 transaction으로 묶어 데이터 불일치를 방지했습니다
 
 ✅ MySQL Transaction
 - 하나의 사용자행동에서 파생되는 여러 로직들을 오류없이 처리하기위해, DB작업을 트랜잭션으로 행동을 묶음
@@ -441,7 +439,7 @@ _____________________
 ## 6. AI 도구 사용 내역
 
 <details>
-<summary><strong>Codex/Gemini 활용 내역</strong></summary>
+<summary><strong>Codex/Gemini 등 AI 도구 사용 </strong></summary>
 
 ### Codex
 
@@ -470,6 +468,5 @@ _____________________
 ## 7. 앞으로 개선할 부분
 
 - 주문 흐름 UI/상태 정리
-- DB 마이그레이션 도구 적용 및 운영 백업 전략 구성
 - AWS EC2 또는 Render/Vercel 배포
 - 영상 분석 더미 플로우 추가
