@@ -2,62 +2,47 @@ import cors from 'cors';
 import express, { type Request, type Response } from 'express';
 import jwt from 'jsonwebtoken';
 import { randomBytes, scryptSync, timingSafeEqual } from 'node:crypto';
-import { db, initializeDatabase } from './db.js';
+import { initializeDatabase } from './db.js';
+import {
+  createGuidebook,
+  deleteGuidebookWithDependencies,
+  findGuidebookOwner,
+  getGuidebookBlocks,
+  getGuidebookById,
+  getGuidebookRows,
+  updateGuidebook,
+} from './repositories/guidebookRepository.js';
+import {
+  createPrintOrder,
+  getOrderRows,
+  updateOrderStatus,
+} from './repositories/orderRepository.js';
+import { getLocationCities } from './repositories/locationRepository.js';
+import {
+  clearPrintCart,
+  deletePrintCartItem,
+  findGuidebookForPrintCart,
+  getPrintCartItems,
+  updatePrintCartItemQuantity,
+  upsertPrintCartItem,
+} from './repositories/printCartRepository.js';
+import {
+  createUser,
+  deleteUserById,
+  findExistingUserByLoginIdOrEmail,
+  findUserById,
+  findUserByLoginIdWithPassword,
+  findUserIdByEmailExcept,
+  findUserPasswordHashById,
+  getUserDependencyCount,
+  getUserRows,
+  serializeUser,
+  updateAdminUser,
+  updateUserAccount,
+  updateUserProfile,
+} from './repositories/userRepository.js';
 
 initializeDatabase();
-
-type UserRow = {
-  id: number;
-  loginId: string;
-  username: string;
-  email: string;
-  displayName: string;
-  bio: string;
-  profileImageUrl: string;
-  avatarUrl: string;
-  followerCount: number;
-  isAdmin: number;
-  trustScore: number;
-  createdAt: string;
-  updatedAt: string;
-};
-
-type GuidebookRow = {
-  id: number;
-  creatorId: number;
-  creatorName: string;
-  title: string;
-  country: string;
-  region: string;
-  coverImageUrl: string;
-  mapImageUrl: string;
-  mapCenterLat: number | null;
-  mapCenterLon: number | null;
-  printCount: number;
-  price: number;
-  followerCount: number;
-  trustScore: number;
-  blockCount: number;
-  rankInRegion: number;
-};
-
-type RoutePointRow = {
-  id: number;
-  guidebookId: number;
-  pointOrder: number;
-  title: string;
-  x: number;
-  y: number;
-};
-
-type GuidebookBlockRow = {
-  id: number;
-  guidebookId: number;
-  stepOrder: number;
-  placeName: string;
-  content: string;
-  imageUrl: string;
-};
 
 type GeoapifyGeocodeResponse = {
   results?: Array<{
@@ -65,23 +50,6 @@ type GeoapifyGeocodeResponse = {
     lon?: number;
     result_type?: string;
   }>;
-};
-
-type PrintCartItemRow = {
-  id: number;
-  userId: number;
-  guidebookId: number;
-  quantity: number;
-  createdAt: string;
-  updatedAt: string;
-  creatorId: number;
-  creatorName: string;
-  title: string;
-  country: string;
-  region: string;
-  coverImageUrl: string;
-  printCount: number;
-  price: number;
 };
 
 type CreateGuidebookBody = {
@@ -128,6 +96,7 @@ const mapPreviewHeight = '675';
 const mapPreviewStyle = 'klokantech-basic';
 const mapPreviewWidth = '900';
 const mapPreviewZoom = '11';
+const orderStatuses = ['pending', 'producing', 'shipping', 'completed'] as const;
 
 type AuthTokenPayload = {
   userId: number;
@@ -171,15 +140,6 @@ function verifyPassword(password: string, storedPasswordHash: string) {
   return savedHash.length === inputHash.length && timingSafeEqual(savedHash, inputHash);
 }
 
-function serializeUser(row: UserRow) {
-  return {
-    ...row,
-    isAdmin: Boolean(row.isAdmin),
-    username: row.displayName || row.username,
-    avatarUrl: row.profileImageUrl || row.avatarUrl,
-  };
-}
-
 function createAccessToken(userId: number) {
   return jwt.sign({ userId } satisfies AuthTokenPayload, jwtSecret, {
     expiresIn: '2h',
@@ -217,24 +177,7 @@ function getRequestUser(request: Request) {
     return null;
   }
 
-  const user = db.prepare(`
-    SELECT
-      id,
-      login_id AS loginId,
-      username,
-      email,
-      display_name AS displayName,
-      bio,
-      profile_image_url AS profileImageUrl,
-      avatar_url AS avatarUrl,
-      follower_count AS followerCount,
-      is_admin AS isAdmin,
-      trust_score AS trustScore,
-      created_at AS createdAt,
-      updated_at AS updatedAt
-    FROM users
-    WHERE id = ?
-  `).get(userId) as UserRow | undefined;
+  const user = findUserById(userId);
 
   return user ? serializeUser(user) : null;
 }
@@ -264,189 +207,6 @@ function requireAuthUser(request: Request, response: Response) {
   }
 
   return currentUser;
-}
-
-function hasColumn(tableName: string, columnName: string) {
-  const columns = db.prepare(`PRAGMA table_info(${tableName})`).all() as { name: string }[];
-
-  return columns.some((column) => column.name === columnName);
-}
-
-function getGuidebookById(guidebookId: number) {
-  const guidebook = db.prepare(`
-    SELECT
-      guidebooks.id,
-      guidebooks.creator_id AS creatorId,
-      users.username AS creatorName,
-      guidebooks.title,
-      guidebooks.country,
-      guidebooks.region,
-      guidebooks.cover_image_url AS coverImageUrl,
-      guidebooks.map_image_url AS mapImageUrl,
-      guidebooks.map_center_lat AS mapCenterLat,
-      guidebooks.map_center_lon AS mapCenterLon,
-      guidebooks.print_count AS printCount,
-      guidebooks.price,
-      users.follower_count AS followerCount,
-      users.trust_score AS trustScore,
-      COUNT(guidebook_blocks.id) AS blockCount,
-      RANK() OVER (PARTITION BY guidebooks.country, guidebooks.region ORDER BY guidebooks.print_count DESC) AS rankInRegion
-    FROM guidebooks
-    JOIN users ON users.id = guidebooks.creator_id
-    LEFT JOIN guidebook_blocks ON guidebook_blocks.guidebook_id = guidebooks.id
-    WHERE guidebooks.id = ?
-    GROUP BY guidebooks.id
-  `).get(guidebookId) as GuidebookRow | undefined;
-
-  if (!guidebook) {
-    return null;
-  }
-
-  const routePoints = db.prepare(`
-    SELECT
-      id,
-      guidebook_id AS guidebookId,
-      point_order AS pointOrder,
-      title,
-      x,
-      y
-    FROM guidebook_route_points
-    WHERE guidebook_id = ?
-    ORDER BY point_order ASC
-  `).all(guidebookId) as RoutePointRow[];
-
-  return {
-    ...guidebook,
-    routePoints,
-  };
-}
-
-function getPrintCartItems(userId: number) {
-  return db.prepare(`
-    SELECT
-      print_cart_items.id,
-      print_cart_items.user_id AS userId,
-      print_cart_items.guidebook_id AS guidebookId,
-      print_cart_items.quantity,
-      print_cart_items.created_at AS createdAt,
-      print_cart_items.updated_at AS updatedAt,
-      guidebooks.creator_id AS creatorId,
-      users.username AS creatorName,
-      guidebooks.title,
-      guidebooks.country,
-      guidebooks.region,
-      guidebooks.cover_image_url AS coverImageUrl,
-      guidebooks.print_count AS printCount,
-      guidebooks.price
-    FROM print_cart_items
-    JOIN guidebooks ON guidebooks.id = print_cart_items.guidebook_id
-    JOIN users ON users.id = guidebooks.creator_id
-    WHERE print_cart_items.user_id = ?
-    ORDER BY print_cart_items.created_at DESC
-  `).all(userId) as PrintCartItemRow[];
-}
-
-function getUserRows() {
-  const rows = db.prepare(`
-    SELECT
-      id,
-      login_id AS loginId,
-      username,
-      email,
-      display_name AS displayName,
-      bio,
-      profile_image_url AS profileImageUrl,
-      avatar_url AS avatarUrl,
-      follower_count AS followerCount,
-      is_admin AS isAdmin,
-      trust_score AS trustScore,
-      created_at AS createdAt,
-      updated_at AS updatedAt
-    FROM users
-    ORDER BY follower_count DESC
-  `).all() as UserRow[];
-
-  return rows.map(serializeUser);
-}
-
-function getGuidebookRows(region: string | null = null) {
-  const rows = db.prepare(`
-    SELECT
-      guidebooks.id,
-      guidebooks.creator_id AS creatorId,
-      users.username AS creatorName,
-      guidebooks.title,
-      guidebooks.country,
-      guidebooks.region,
-      guidebooks.cover_image_url AS coverImageUrl,
-      guidebooks.map_image_url AS mapImageUrl,
-      guidebooks.map_center_lat AS mapCenterLat,
-      guidebooks.map_center_lon AS mapCenterLon,
-      guidebooks.print_count AS printCount,
-      guidebooks.price,
-      users.follower_count AS followerCount,
-      users.trust_score AS trustScore,
-      COUNT(guidebook_blocks.id) AS blockCount,
-      RANK() OVER (PARTITION BY guidebooks.country, guidebooks.region ORDER BY guidebooks.print_count DESC) AS rankInRegion
-    FROM guidebooks
-    JOIN users ON users.id = guidebooks.creator_id
-    LEFT JOIN guidebook_blocks ON guidebook_blocks.guidebook_id = guidebooks.id
-    WHERE @region IS NULL OR guidebooks.region = @region
-    GROUP BY guidebooks.id
-    ORDER BY guidebooks.print_count DESC, users.trust_score DESC
-  `).all({ region }) as GuidebookRow[];
-
-  const routePoints = db.prepare(`
-    SELECT
-      id,
-      guidebook_id AS guidebookId,
-      point_order AS pointOrder,
-      title,
-      x,
-      y
-    FROM guidebook_route_points
-    ORDER BY point_order ASC
-  `).all() as RoutePointRow[];
-
-  const guidebooks = uniqueBy(rows, (row) => [
-    row.creatorId,
-    row.title,
-    row.country,
-    row.region,
-    row.coverImageUrl,
-  ].join('|'));
-
-  return guidebooks.map((row) => ({
-    ...row,
-    routePoints: routePoints.filter((point) => point.guidebookId === row.id),
-  }));
-}
-
-function getOrderRows() {
-  return db.prepare(`
-    SELECT
-      orders.id,
-      orders.consumer_id AS consumerId,
-      consumers.username AS consumerName,
-      guidebooks.creator_id AS creatorId,
-      creators.username AS creatorName,
-      orders.guidebook_id AS guidebookId,
-      guidebooks.title AS guidebookTitle,
-      guidebooks.country,
-      guidebooks.region,
-      orders.quantity,
-      orders.total_price AS totalPrice,
-      custom_prints.selected_layout_type AS selectedLayoutType,
-      orders.status,
-      orders.shipping_memo AS shippingMemo,
-      orders.created_at AS createdAt
-    FROM orders
-    JOIN users AS consumers ON consumers.id = orders.consumer_id
-    JOIN guidebooks ON guidebooks.id = orders.guidebook_id
-    JOIN users AS creators ON creators.id = guidebooks.creator_id
-    LEFT JOIN custom_prints ON custom_prints.id = orders.custom_print_id
-    ORDER BY orders.created_at DESC
-  `).all();
 }
 
 app.get('/api/health', (_request, response) => {
@@ -553,19 +313,7 @@ app.get('/api/maps/cities', (request, response) => {
     return;
   }
 
-  const rows = db.prepare(`
-    SELECT
-      country,
-      city,
-      fallback_map_image_url AS mapImageUrl,
-      map_center_lat AS mapCenterLat,
-      map_center_lon AS mapCenterLon
-    FROM location_presets
-    WHERE country = ?
-    ORDER BY sort_order ASC, city ASC
-  `).all(country);
-
-  response.json(rows);
+  response.json(getLocationCities(country));
 });
 
 app.get('/api/users', (request, response) => {
@@ -592,12 +340,7 @@ app.post('/api/auth/signup', (request, response) => {
     return;
   }
 
-  const existingUser = db.prepare(`
-    SELECT id
-    FROM users
-    WHERE login_id = @loginId
-       OR lower(email) = @email
-  `).get({ email: normalizedEmail, loginId: normalizedLoginId });
+  const existingUser = findExistingUserByLoginIdOrEmail(normalizedLoginId, normalizedEmail);
 
   if (existingUser) {
     response.status(409).json({ message: '이미 사용 중인 아이디 또는 이메일입니다.' });
@@ -611,67 +354,7 @@ app.post('/api/auth/signup', (request, response) => {
 
   const isAdmin = normalizedAdminCode === adminSignupCode ? 1 : 0;
 
-  const insertUser = hasColumn('users', 'role')
-    ? db.prepare(`
-      INSERT INTO users (
-        login_id,
-        username,
-        role,
-        email,
-        password_hash,
-        display_name,
-        bio,
-        profile_image_url,
-        avatar_url,
-        follower_count,
-        is_admin,
-        trust_score
-      )
-      VALUES (
-        @loginId,
-        @displayName,
-        'consumer',
-        @email,
-        @passwordHash,
-        @displayName,
-        '',
-        @profileImageUrl,
-        @profileImageUrl,
-        0,
-        @isAdmin,
-        0
-      )
-    `)
-    : db.prepare(`
-      INSERT INTO users (
-        login_id,
-        username,
-        email,
-        password_hash,
-        display_name,
-        bio,
-        profile_image_url,
-        avatar_url,
-        follower_count,
-        is_admin,
-        trust_score
-      )
-      VALUES (
-        @loginId,
-        @displayName,
-        @email,
-        @passwordHash,
-        @displayName,
-        '',
-        @profileImageUrl,
-        @profileImageUrl,
-        0,
-        @isAdmin,
-        0
-      )
-    `);
-
-  const result = insertUser.run({
+  const userId = createUser({
     displayName: normalizedDisplayName,
     email: normalizedEmail,
     loginId: normalizedLoginId,
@@ -680,24 +363,12 @@ app.post('/api/auth/signup', (request, response) => {
     isAdmin,
   });
 
-  const user = db.prepare(`
-    SELECT
-      id,
-      login_id AS loginId,
-      username,
-      email,
-      display_name AS displayName,
-      bio,
-      profile_image_url AS profileImageUrl,
-      avatar_url AS avatarUrl,
-      follower_count AS followerCount,
-      is_admin AS isAdmin,
-      trust_score AS trustScore,
-      created_at AS createdAt,
-      updated_at AS updatedAt
-    FROM users
-    WHERE id = ?
-  `).get(result.lastInsertRowid) as UserRow;
+  const user = findUserById(userId);
+
+  if (!user) {
+    response.status(404).json({ message: 'User not found.' });
+    return;
+  }
 
   response.status(201).json({
     token: createAccessToken(user.id),
@@ -714,25 +385,7 @@ app.post('/api/auth/login', (request, response) => {
     return;
   }
 
-  const user = db.prepare(`
-    SELECT
-      id,
-      login_id AS loginId,
-      username,
-      email,
-      password_hash AS passwordHash,
-      display_name AS displayName,
-      bio,
-      profile_image_url AS profileImageUrl,
-      avatar_url AS avatarUrl,
-      follower_count AS followerCount,
-      is_admin AS isAdmin,
-      trust_score AS trustScore,
-      created_at AS createdAt,
-      updated_at AS updatedAt
-    FROM users
-    WHERE login_id = ?
-  `).get(normalizedLoginId) as (UserRow & { passwordHash: string }) | undefined;
+  const user = findUserByLoginIdWithPassword(normalizedLoginId);
 
   if (!user) {
     response.status(404).json({ message: '존재하지 않는 계정입니다.' });
@@ -769,43 +422,19 @@ app.patch('/api/users/me/profile', (request, response) => {
     return;
   }
 
-  const result = db.prepare(`
-    UPDATE users
-    SET username = @displayName,
-        display_name = @displayName,
-        profile_image_url = @profileImageUrl,
-        avatar_url = @profileImageUrl,
-        updated_at = CURRENT_TIMESTAMP
-    WHERE id = @userId
-  `).run({
-    displayName: normalizedDisplayName,
-    profileImageUrl: profileImageUrl?.trim() || '',
-    userId: currentUser.id,
-  });
+  const changes = updateUserProfile(currentUser.id, normalizedDisplayName, profileImageUrl?.trim() || '');
 
-  if (result.changes === 0) {
+  if (changes === 0) {
     response.status(404).json({ message: 'User not found.' });
     return;
   }
 
-  const user = db.prepare(`
-    SELECT
-      id,
-      login_id AS loginId,
-      username,
-      email,
-      display_name AS displayName,
-      bio,
-      profile_image_url AS profileImageUrl,
-      avatar_url AS avatarUrl,
-      follower_count AS followerCount,
-      is_admin AS isAdmin,
-      trust_score AS trustScore,
-      created_at AS createdAt,
-      updated_at AS updatedAt
-    FROM users
-    WHERE id = ?
-  `).get(currentUser.id) as UserRow;
+  const user = findUserById(currentUser.id);
+
+  if (!user) {
+    response.status(404).json({ message: 'User not found.' });
+    return;
+  }
 
   response.json(serializeUser(user));
 });
@@ -830,11 +459,7 @@ app.patch('/api/users/me/account', (request, response) => {
     return;
   }
 
-  const currentUser = db.prepare(`
-    SELECT password_hash AS passwordHash
-    FROM users
-    WHERE id = ?
-  `).get(authUser.id) as { passwordHash: string } | undefined;
+  const currentUser = findUserPasswordHashById(authUser.id);
 
   if (!currentUser) {
     response.status(404).json({ message: 'User not found.' });
@@ -848,51 +473,25 @@ app.patch('/api/users/me/account', (request, response) => {
     }
   }
 
-  const existingEmailOwner = db.prepare(`
-    SELECT id
-    FROM users
-    WHERE lower(email) = @email
-      AND id != @userId
-  `).get({ email: normalizedEmail, userId: authUser.id });
+  const existingEmailOwner = findUserIdByEmailExcept(normalizedEmail, authUser.id);
 
   if (existingEmailOwner) {
     response.status(409).json({ message: '이미 사용 중인 이메일입니다.' });
     return;
   }
 
-  db.prepare(`
-    UPDATE users
-    SET email = @email,
-        password_hash = CASE
-          WHEN @passwordHash IS NULL THEN password_hash
-          ELSE @passwordHash
-        END,
-        updated_at = CURRENT_TIMESTAMP
-    WHERE id = @userId
-  `).run({
-    email: normalizedEmail,
-    passwordHash: normalizedNewPassword ? createPasswordHash(normalizedNewPassword) : null,
-    userId: authUser.id,
-  });
+  updateUserAccount(
+    authUser.id,
+    normalizedEmail,
+    normalizedNewPassword ? createPasswordHash(normalizedNewPassword) : null,
+  );
 
-  const user = db.prepare(`
-    SELECT
-      id,
-      login_id AS loginId,
-      username,
-      email,
-      display_name AS displayName,
-      bio,
-      profile_image_url AS profileImageUrl,
-      avatar_url AS avatarUrl,
-      follower_count AS followerCount,
-      is_admin AS isAdmin,
-      trust_score AS trustScore,
-      created_at AS createdAt,
-      updated_at AS updatedAt
-    FROM users
-    WHERE id = ?
-  `).get(authUser.id) as UserRow;
+  const user = findUserById(authUser.id);
+
+  if (!user) {
+    response.status(404).json({ message: 'User not found.' });
+    return;
+  }
 
   response.json(serializeUser(user));
 });
@@ -912,59 +511,32 @@ app.patch('/api/admin/users/:id', (request, response) => {
     return;
   }
 
-  const existingEmailOwner = db.prepare(`
-    SELECT id
-    FROM users
-    WHERE lower(email) = @email
-      AND id != @userId
-  `).get({ email: normalizedEmail, userId });
+  const existingEmailOwner = findUserIdByEmailExcept(normalizedEmail, userId);
 
   if (existingEmailOwner) {
     response.status(409).json({ message: '이미 사용 중인 이메일입니다.' });
     return;
   }
 
-  const result = db.prepare(`
-    UPDATE users
-    SET username = @displayName,
-        display_name = @displayName,
-        email = @email,
-        is_admin = @isAdmin,
-        profile_image_url = @profileImageUrl,
-        avatar_url = @profileImageUrl,
-        updated_at = CURRENT_TIMESTAMP
-    WHERE id = @userId
-  `).run({
+  const changes = updateAdminUser({
     displayName: normalizedDisplayName,
     email: normalizedEmail,
-    isAdmin: isAdmin ? 1 : 0,
+    isAdmin,
     profileImageUrl: profileImageUrl?.trim() || '',
     userId,
   });
 
-  if (result.changes === 0) {
+  if (changes === 0) {
     response.status(404).json({ message: 'User not found.' });
     return;
   }
 
-  const user = db.prepare(`
-    SELECT
-      id,
-      login_id AS loginId,
-      username,
-      email,
-      display_name AS displayName,
-      bio,
-      profile_image_url AS profileImageUrl,
-      avatar_url AS avatarUrl,
-      follower_count AS followerCount,
-      is_admin AS isAdmin,
-      trust_score AS trustScore,
-      created_at AS createdAt,
-      updated_at AS updatedAt
-    FROM users
-    WHERE id = ?
-  `).get(userId) as UserRow;
+  const user = findUserById(userId);
+
+  if (!user) {
+    response.status(404).json({ message: 'User not found.' });
+    return;
+  }
 
   response.json(serializeUser(user));
 });
@@ -981,24 +553,16 @@ app.delete('/api/admin/users/:id', (request, response) => {
     return;
   }
 
-  const dependencyCount = db.prepare(`
-    SELECT
-      (SELECT COUNT(*) FROM guidebooks WHERE creator_id = @userId) +
-      (SELECT COUNT(*) FROM orders WHERE consumer_id = @userId) +
-      (SELECT COUNT(*) FROM guidebooks
-        JOIN orders ON orders.guidebook_id = guidebooks.id
-        WHERE guidebooks.creator_id = @userId
-      ) AS count
-  `).get({ userId }) as { count: number };
+  const dependencyCount = getUserDependencyCount(userId);
 
-  if (dependencyCount.count > 0) {
+  if (dependencyCount > 0) {
     response.status(409).json({ message: '연결된 가이드북 또는 주문이 있는 계정은 삭제할 수 없습니다.' });
     return;
   }
 
-  const result = db.prepare('DELETE FROM users WHERE id = ?').run(userId);
+  const changes = deleteUserById(userId);
 
-  if (result.changes === 0) {
+  if (changes === 0) {
     response.status(404).json({ message: 'User not found.' });
     return;
   }
@@ -1037,20 +601,7 @@ app.get('/api/guidebooks', (request, response) => {
 });
 
 app.get('/api/guidebooks/:id/blocks', (request, response) => {
-  const rows = db.prepare(`
-    SELECT
-      id,
-      guidebook_id AS guidebookId,
-      step_order AS stepOrder,
-      place_name AS placeName,
-      content,
-      image_url AS imageUrl
-    FROM guidebook_blocks
-    WHERE guidebook_id = ?
-    ORDER BY step_order ASC
-  `).all(request.params.id);
-
-  response.json(rows);
+  response.json(getGuidebookBlocks(request.params.id));
 });
 
 app.get('/api/print-cart', (request, response) => {
@@ -1070,7 +621,7 @@ app.delete('/api/print-cart', (request, response) => {
     return;
   }
 
-  db.prepare('DELETE FROM print_cart_items WHERE user_id = ?').run(currentUser.id);
+  clearPrintCart(currentUser.id);
   response.status(204).send();
 });
 
@@ -1090,23 +641,14 @@ app.post('/api/print-cart', (request, response) => {
     return;
   }
 
-  const guidebook = db.prepare('SELECT id FROM guidebooks WHERE id = ?').get(guidebookId);
+  const guidebook = findGuidebookForPrintCart(guidebookId);
 
   if (!guidebook) {
     response.status(404).json({ message: 'Guidebook not found.' });
     return;
   }
 
-  db.prepare(`
-    INSERT INTO print_cart_items (user_id, guidebook_id, quantity)
-    VALUES (@userId, @guidebookId, @quantity)
-    ON CONFLICT(user_id, guidebook_id) DO UPDATE SET
-      updated_at = CURRENT_TIMESTAMP
-  `).run({
-    userId: currentUser.id,
-    guidebookId,
-    quantity: Math.max(1, quantity ?? 1),
-  });
+  upsertPrintCartItem(currentUser.id, guidebookId, Math.max(1, quantity ?? 1));
 
   response.status(201).json(getPrintCartItems(currentUser.id).find((item) => item.guidebookId === guidebookId));
 });
@@ -1125,13 +667,7 @@ app.patch('/api/print-cart/:guidebookId', (request, response) => {
     return;
   }
 
-  db.prepare(`
-    UPDATE print_cart_items
-    SET quantity = @quantity,
-        updated_at = CURRENT_TIMESTAMP
-    WHERE user_id = @userId
-      AND guidebook_id = @guidebookId
-  `).run({ userId: currentUser.id, guidebookId, quantity });
+  updatePrintCartItemQuantity(currentUser.id, guidebookId, quantity);
 
   const updated = getPrintCartItems(currentUser.id).find((item) => item.guidebookId === guidebookId);
 
@@ -1156,11 +692,7 @@ app.delete('/api/print-cart/:guidebookId', (request, response) => {
     return;
   }
 
-  db.prepare(`
-    DELETE FROM print_cart_items
-    WHERE user_id = ?
-      AND guidebook_id = ?
-  `).run(currentUser.id, guidebookId);
+  deletePrintCartItem(currentUser.id, guidebookId);
 
   response.status(204).send();
 });
@@ -1191,81 +723,21 @@ app.post('/api/guidebooks', (request, response) => {
     return;
   }
 
-  const transaction = db.transaction(() => {
-    const createdGuidebook = db.prepare(`
-      INSERT INTO guidebooks (creator_id, title, country, region, cover_image_url, map_image_url, map_center_lat, map_center_lon, print_count, price)
-      VALUES (@creatorId, @title, @country, @region, @coverImageUrl, @mapImageUrl, @mapCenterLat, @mapCenterLon, 0, 12800)
-    `).run({
-      creatorId: currentUser.id,
-      title,
-      country,
-      region,
-      coverImageUrl,
-      mapImageUrl,
-      mapCenterLat: typeof mapCenterLat === 'number' ? mapCenterLat : null,
-      mapCenterLon: typeof mapCenterLon === 'number' ? mapCenterLon : null,
-    });
-
-    const guidebookId = Number(createdGuidebook.lastInsertRowid);
-
-    const blockInputs = blocks && blocks.length > 0 ? blocks : block ? [block] : [];
-    const normalizedBlocks = blockInputs.length > 0 ? blockInputs : [
-      {
-        placeName: `${region} 주요 장면`,
-        content: '생성 모달에서 입력한 가이드북 상세 설명입니다.',
-        imageUrl: coverImageUrl,
-      },
-    ];
-    const insertBlock = db.prepare(`
-      INSERT INTO guidebook_blocks (guidebook_id, step_order, place_name, content, image_url)
-      VALUES (@guidebookId, @stepOrder, @placeName, @content, @imageUrl)
-    `);
-
-    normalizedBlocks.forEach((item, index) => {
-      insertBlock.run({
-        guidebookId,
-        stepOrder: index + 1,
-        placeName: item.placeName?.trim() || `${region} 주요 장면 ${index + 1}`,
-        content: item.content?.trim() || '생성 모달에서 입력한 가이드북 상세 설명입니다.',
-        imageUrl: item.imageUrl?.trim() || coverImageUrl,
-      });
-    });
-
-    const insertRoutePoint = db.prepare(`
-      INSERT INTO guidebook_route_points (guidebook_id, point_order, title, x, y)
-      VALUES (@guidebookId, @pointOrder, @title, @x, @y)
-    `);
-
-    (routePoints && routePoints.length > 0 ? routePoints : [
-      { pointOrder: 1, title: '포인트 1', x: 24, y: 32 },
-      { pointOrder: 2, title: '포인트 2', x: 66, y: 58 },
-    ]).forEach((point, index) => {
-      insertRoutePoint.run({
-        guidebookId,
-        pointOrder: point.pointOrder ?? index + 1,
-        title: point.title?.trim() || `포인트 ${index + 1}`,
-        x: typeof point.x === 'number' ? point.x : 50,
-        y: typeof point.y === 'number' ? point.y : 50,
-      });
-    });
-
-    return guidebookId;
+  const guidebookId = createGuidebook({
+    block,
+    blocks,
+    country,
+    coverImageUrl,
+    creatorId: currentUser.id,
+    mapImageUrl,
+    mapCenterLat,
+    mapCenterLon,
+    region,
+    routePoints,
+    title,
   });
-
-  const guidebookId = transaction();
   const guidebook = getGuidebookById(guidebookId);
-  const createdBlocks = db.prepare(`
-    SELECT
-      id,
-      guidebook_id AS guidebookId,
-      step_order AS stepOrder,
-      place_name AS placeName,
-      content,
-      image_url AS imageUrl
-    FROM guidebook_blocks
-    WHERE guidebook_id = ?
-    ORDER BY step_order ASC
-  `).all(guidebookId) as GuidebookBlockRow[];
+  const createdBlocks = getGuidebookBlocks(guidebookId);
 
   response.status(201).json({ guidebook, blocks: createdBlocks });
 });
@@ -1301,10 +773,7 @@ app.patch('/api/guidebooks/:id', (request, response) => {
     return;
   }
 
-  const guidebook = db.prepare('SELECT id, creator_id AS creatorId FROM guidebooks WHERE id = ?').get(guidebookId) as {
-    creatorId: number;
-    id: number;
-  } | undefined;
+  const guidebook = findGuidebookOwner(guidebookId);
 
   if (!guidebook) {
     response.status(404).json({ message: 'Guidebook not found.' });
@@ -1316,87 +785,21 @@ app.patch('/api/guidebooks/:id', (request, response) => {
     return;
   }
 
-  const transaction = db.transaction(() => {
-    db.prepare(`
-      UPDATE guidebooks
-      SET title = @title,
-          country = @country,
-          region = @region,
-          cover_image_url = @coverImageUrl,
-          map_image_url = @mapImageUrl,
-          map_center_lat = @mapCenterLat,
-          map_center_lon = @mapCenterLon
-      WHERE id = @guidebookId
-    `).run({
-      country,
-      coverImageUrl,
-      guidebookId,
-      mapImageUrl,
-      mapCenterLat: typeof mapCenterLat === 'number' ? mapCenterLat : null,
-      mapCenterLon: typeof mapCenterLon === 'number' ? mapCenterLon : null,
-      region,
-      title,
-    });
-
-    db.prepare('DELETE FROM guidebook_blocks WHERE guidebook_id = ?').run(guidebookId);
-    db.prepare('DELETE FROM guidebook_route_points WHERE guidebook_id = ?').run(guidebookId);
-
-    const normalizedBlocks = blocks && blocks.length > 0 ? blocks : [
-      {
-        placeName: `${region} 주요 장면`,
-        content: '수정 모달에서 입력한 가이드북 상세 설명입니다.',
-        imageUrl: coverImageUrl,
-      },
-    ];
-    const insertBlock = db.prepare(`
-      INSERT INTO guidebook_blocks (guidebook_id, step_order, place_name, content, image_url)
-      VALUES (@guidebookId, @stepOrder, @placeName, @content, @imageUrl)
-    `);
-
-    normalizedBlocks.forEach((item, index) => {
-      insertBlock.run({
-        guidebookId,
-        stepOrder: index + 1,
-        placeName: item.placeName?.trim() || `${region} 주요 장면 ${index + 1}`,
-        content: item.content?.trim() || '수정 모달에서 입력한 가이드북 상세 설명입니다.',
-        imageUrl: item.imageUrl?.trim() || coverImageUrl,
-      });
-    });
-
-    const insertRoutePoint = db.prepare(`
-      INSERT INTO guidebook_route_points (guidebook_id, point_order, title, x, y)
-      VALUES (@guidebookId, @pointOrder, @title, @x, @y)
-    `);
-
-    (routePoints && routePoints.length > 0 ? routePoints : [
-      { pointOrder: 1, title: '포인트 1', x: 24, y: 32 },
-      { pointOrder: 2, title: '포인트 2', x: 66, y: 58 },
-    ]).forEach((point, index) => {
-      insertRoutePoint.run({
-        guidebookId,
-        pointOrder: point.pointOrder ?? index + 1,
-        title: point.title?.trim() || `포인트 ${index + 1}`,
-        x: typeof point.x === 'number' ? point.x : 50,
-        y: typeof point.y === 'number' ? point.y : 50,
-      });
-    });
+  updateGuidebook({
+    blocks,
+    country,
+    coverImageUrl,
+    guidebookId,
+    mapImageUrl,
+    mapCenterLat,
+    mapCenterLon,
+    region,
+    routePoints,
+    title,
   });
 
-  transaction();
-
   const updatedGuidebook = getGuidebookById(guidebookId);
-  const updatedBlocks = db.prepare(`
-    SELECT
-      id,
-      guidebook_id AS guidebookId,
-      step_order AS stepOrder,
-      place_name AS placeName,
-      content,
-      image_url AS imageUrl
-    FROM guidebook_blocks
-    WHERE guidebook_id = ?
-    ORDER BY step_order ASC
-  `).all(guidebookId) as GuidebookBlockRow[];
+  const updatedBlocks = getGuidebookBlocks(guidebookId);
 
   response.json({ guidebook: updatedGuidebook, blocks: updatedBlocks });
 });
@@ -1414,10 +817,7 @@ app.delete('/api/guidebooks/:id', (request, response) => {
     return;
   }
 
-  const guidebook = db.prepare('SELECT id, creator_id AS creatorId FROM guidebooks WHERE id = ?').get(guidebookId) as {
-    creatorId: number;
-    id: number;
-  } | undefined;
+  const guidebook = findGuidebookOwner(guidebookId);
 
   if (!guidebook) {
     response.status(404).json({ message: 'Guidebook not found.' });
@@ -1429,14 +829,7 @@ app.delete('/api/guidebooks/:id', (request, response) => {
     return;
   }
 
-  const transaction = db.transaction(() => {
-    db.prepare('DELETE FROM orders WHERE guidebook_id = ?').run(guidebookId);
-    db.prepare('DELETE FROM custom_prints WHERE guidebook_id = ?').run(guidebookId);
-    db.prepare('DELETE FROM print_cart_items WHERE guidebook_id = ?').run(guidebookId);
-    db.prepare('DELETE FROM guidebooks WHERE id = ?').run(guidebookId);
-  });
-
-  transaction();
+  deleteGuidebookWithDependencies(guidebookId);
   response.status(204).send();
 });
 
@@ -1490,61 +883,18 @@ app.post('/api/orders', (request, response) => {
     return;
   }
 
-  const normalizedQuantity = Math.max(1, quantity ?? 1);
-  const guidebook = db.prepare('SELECT price FROM guidebooks WHERE id = ?').get(guidebookId) as { price: number } | undefined;
+  const created = createPrintOrder({
+    consumerId: currentUser.id,
+    guidebookId,
+    quantity: Math.max(1, quantity ?? 1),
+    selectedLayoutType,
+    shippingMemo: shippingMemo ?? '',
+  });
 
-  if (!guidebook) {
+  if (!created) {
     response.status(404).json({ message: 'Guidebook not found.' });
     return;
   }
-
-  const transaction = db.transaction(() => {
-    const customPrint = db.prepare(`
-      INSERT INTO custom_prints (consumer_id, guidebook_id, selected_layout_type)
-      VALUES (?, ?, ?)
-    `).run(currentUser.id, guidebookId, selectedLayoutType);
-
-    const order = db.prepare(`
-      INSERT INTO orders (consumer_id, guidebook_id, custom_print_id, quantity, total_price, status, shipping_memo)
-      VALUES (?, ?, ?, ?, ?, 'pending', ?)
-    `).run(
-      currentUser.id,
-      guidebookId,
-      customPrint.lastInsertRowid,
-      normalizedQuantity,
-      guidebook.price * normalizedQuantity,
-      shippingMemo ?? '',
-    );
-
-    db.prepare('UPDATE guidebooks SET print_count = print_count + ? WHERE id = ?').run(normalizedQuantity, guidebookId);
-    return order.lastInsertRowid;
-  });
-
-  const orderId = transaction();
-  const created = db.prepare(`
-    SELECT
-      orders.id,
-      orders.consumer_id AS consumerId,
-      consumers.username AS consumerName,
-      guidebooks.creator_id AS creatorId,
-      creators.username AS creatorName,
-      orders.guidebook_id AS guidebookId,
-      guidebooks.title AS guidebookTitle,
-      guidebooks.country,
-      guidebooks.region,
-      orders.quantity,
-      orders.total_price AS totalPrice,
-      custom_prints.selected_layout_type AS selectedLayoutType,
-      orders.status,
-      orders.shipping_memo AS shippingMemo,
-      orders.created_at AS createdAt
-    FROM orders
-    JOIN users AS consumers ON consumers.id = orders.consumer_id
-    JOIN guidebooks ON guidebooks.id = orders.guidebook_id
-    JOIN users AS creators ON creators.id = guidebooks.creator_id
-    LEFT JOIN custom_prints ON custom_prints.id = orders.custom_print_id
-    WHERE orders.id = ?
-  `).get(orderId);
 
   response.status(201).json(created);
 });
@@ -1555,38 +905,14 @@ app.patch('/api/orders/:id/status', (request, response) => {
   }
 
   const { status } = request.body as { status?: string };
+  const nextStatus = orderStatuses.find((orderStatus) => orderStatus === status);
 
-  if (!['pending', 'producing', 'shipping', 'completed'].includes(status ?? '')) {
+  if (!nextStatus) {
     response.status(400).json({ message: 'Invalid status.' });
     return;
   }
 
-  db.prepare('UPDATE orders SET status = ? WHERE id = ?').run(status, request.params.id);
-
-  const updated = db.prepare(`
-    SELECT
-      orders.id,
-      orders.consumer_id AS consumerId,
-      consumers.username AS consumerName,
-      guidebooks.creator_id AS creatorId,
-      creators.username AS creatorName,
-      orders.guidebook_id AS guidebookId,
-      guidebooks.title AS guidebookTitle,
-      guidebooks.country,
-      guidebooks.region,
-      orders.quantity,
-      orders.total_price AS totalPrice,
-      custom_prints.selected_layout_type AS selectedLayoutType,
-      orders.status,
-      orders.shipping_memo AS shippingMemo,
-      orders.created_at AS createdAt
-    FROM orders
-    JOIN users AS consumers ON consumers.id = orders.consumer_id
-    JOIN guidebooks ON guidebooks.id = orders.guidebook_id
-    JOIN users AS creators ON creators.id = guidebooks.creator_id
-    LEFT JOIN custom_prints ON custom_prints.id = orders.custom_print_id
-    WHERE orders.id = ?
-  `).get(request.params.id);
+  const updated = updateOrderStatus(Number(request.params.id), nextStatus);
 
   response.json(updated);
 });

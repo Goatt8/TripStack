@@ -14,6 +14,7 @@
     "cors": "latest",
     "express": "latest",
     "jsonwebtoken": "^9.0.3",
+    "mysql2": "^3.23.3",
     "tsx": "latest"
   },
   "devDependencies": {
